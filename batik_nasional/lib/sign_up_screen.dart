@@ -1,9 +1,9 @@
 import 'package:batik_nasional/home_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignUpScreen extends StatefulWidget {
-  const SignUpScreen({Key? key}) : super(key: key); // Fix constructor syntax
+  const SignUpScreen({Key? key}) : super(key: key);
   @override
   SignUpScreenState createState() => SignUpScreenState();
 }

@@ -1,0 +1,83 @@
+{
+  "project_info": {
+    "project_number": "113708571782",
+    "firebase_url": "https://aplikasi-batik-nasional-default-rtdb.firebaseio.com",
+    "project_id": "aplikasi-batik-nasional",
+    "storage_bucket": "aplikasi-batik-nasional.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:113708571782:android:2de852f6d0832ef5fec507",
+        "android_client_info": {
+          "package_name": "com.example.aplikasi_batik_nasional"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "113708571782-ohj54p14lntapaid7cs9sipm844mr4q8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBBrUcxu6kMKqgUaZTjPiylf2SlA6FJerE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "113708571782-ohj54p14lntapaid7cs9sipm844mr4q8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "113708571782-hq9stgtopvf2sntf2qpmfji285iq6na8.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.aplikasiBatikNasional"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:113708571782:android:e5a5757142d2fc0cfec507",
+        "android_client_info": {
+          "package_name": "com.example.batik_nasional"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "113708571782-ohj54p14lntapaid7cs9sipm844mr4q8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBBrUcxu6kMKqgUaZTjPiylf2SlA6FJerE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "113708571782-ohj54p14lntapaid7cs9sipm844mr4q8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "113708571782-hq9stgtopvf2sntf2qpmfji285iq6na8.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.aplikasiBatikNasional"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

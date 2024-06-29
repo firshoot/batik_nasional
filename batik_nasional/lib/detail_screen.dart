@@ -8,6 +8,8 @@ class Batik {
   final String built;
   final String type;
   final String description;
+  final String imageAsset;
+  final List<String> imageUrls;
 
   Batik({
     required this.name,
@@ -15,15 +17,15 @@ class Batik {
     required this.built,
     required this.type,
     required this.description,
+    required this.imageAsset,
+    required this.imageUrls,
   });
 }
 
 class DetailScreen extends StatefulWidget {
   final Batik batik;
-  final void Function(Set<String>)? updateFavorites;
 
-  const DetailScreen({Key? key, required this.batik, this.updateFavorites})
-      : super(key: key);
+  const DetailScreen({Key? key, required this.batik}) : super(key: key);
 
   @override
   _DetailScreenState createState() => _DetailScreenState();
@@ -31,10 +33,14 @@ class DetailScreen extends StatefulWidget {
 
 class _DetailScreenState extends State<DetailScreen> {
   bool isSignedIn = false;
-  bool _isFavorite = false;
-  late Set<String> favoritebatiks = <String>{};
 
-  void _checkSignInStatus() async {
+  @override
+  void initState() {
+    super.initState();
+    _checkSignInStatus();
+  }
+
+  Future<void> _checkSignInStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool signedIn = prefs.getBool('isSignedIn') ?? false;
 
@@ -44,87 +50,49 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _checkSignInStatus();
-    _loadFavouriteStatus();
-  }
-
-  Future<void> _loadFavouriteStatus() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool favorite = prefs.getBool('favorite_${widget.batik.name}') ?? false;
-
-    setState(() {
-      _isFavorite = favorite;
-      favoritebatiks =
-          prefs.getStringList('favoritebatiks')?.toSet() ?? <String>{};
-    });
-  }
-
-  Future<void> _toggleFavorite() async {
-    bool isFavorite = !_isFavorite;
-    await _saveFavoriteStatus(isFavorite);
-    setState(() {
-      _isFavorite = isFavorite;
-    });
-  }
-
-  Future<void> _saveFavoriteStatus(bool isFavorite) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String batikName = widget.batik.name;
-
-    if (isFavorite) {
-      favoritebatiks.add(batikName);
-    } else {
-      favoritebatiks.remove(batikName);
-    }
-
-    await prefs.setStringList('favoritebatiks', favoritebatiks.toList());
-    await prefs.setBool('favorite_$batikName', isFavorite);
-
-    // Beritahu widget induk (HomeScreen) bahwa ada perubahan pada daftar favorit
-    if (widget.updateFavorites != null) {
-      widget.updateFavorites!(favoritebatiks);
-    }
-  }
-
-  Future<void> _removeFromFavorites() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String batikName = widget.batik.name;
-
-    if (favoritebatiks.contains(batikName)) {
-      favoritebatiks.remove(batikName);
-      await prefs.setStringList('favoritebatiks', favoritebatiks.toList());
-      await prefs.remove('favorite_$batikName');
-
-      // Beritahu widget induk (HomeScreen) bahwa ada perubahan pada daftar favorit
-      if (widget.updateFavorites != null) {
-        widget.updateFavorites!(favoritebatiks);
-      }
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade100.withOpacity(0.5),
-                  shape: BoxShape.circle,
+            Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: widget.batik.imageAsset.isNotEmpty
+                        ? Image.network(
+                            widget.batik.imageAsset,
+                            width: double.infinity,
+                            height: 300,
+                            fit: BoxFit.cover,
+                          )
+                        : Container(
+                            height: 300,
+                            width: double.infinity,
+                            color: Colors.grey,
+                            child: Center(child: Text('No Image')),
+                          ),
+                  ),
                 ),
-                child: IconButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  icon: const Icon(Icons.arrow_back),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade100.withOpacity(0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      icon: const Icon(Icons.arrow_back),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -139,52 +107,22 @@ class _DetailScreenState extends State<DetailScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.place,
-                            color: Colors.red,
-                          ),
-                          const SizedBox(width: 8),
-                          const SizedBox(
-                            width: 70,
-                            child: Text(
-                              'Lokasi',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          Text(' : ${widget.batik.location}')
-                        ],
+                      const Icon(
+                        Icons.place,
+                        color: Colors.red,
                       ),
-                      Row(
-                        children: [
-                          IconButton(
-                            onPressed: () {
-                              _toggleFavorite();
-                            },
-                            icon: Icon(
-                              isSignedIn && _isFavorite
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-                            ),
-                            color:
-                                isSignedIn && _isFavorite ? Colors.red : null,
-                          ),
-                          IconButton(
-                            onPressed: () {
-                              _removeFromFavorites();
-                            },
-                            icon: Icon(
-                              Icons.delete,
-                              color: Colors.red,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(width: 8),
+                      const SizedBox(
+                        width: 70,
+                        child: Text(
+                          'Lokasi',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
+                      Text(' : ${widget.batik.location}')
                     ],
                   ),
                   Row(
@@ -230,6 +168,50 @@ class _DetailScreenState extends State<DetailScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(widget.batik.description),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Divider(color: Colors.blue.shade100),
+                  const Text(
+                    'Galeri',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 100,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: widget.batik.imageUrls.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: GestureDetector(
+                            onTap: () {
+                              // Aksi saat gambar di galeri ditekan
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: CachedNetworkImage(
+                                  imageUrl: widget.batik.imageUrls[index],
+                                  placeholder: (context, url) =>
+                                      CircularProgressIndicator(),
+                                  errorWidget: (context, url, error) =>
+                                      Icon(Icons.error),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
             ),

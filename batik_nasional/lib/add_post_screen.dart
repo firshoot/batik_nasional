@@ -3,12 +3,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AddPostScreen extends StatefulWidget {
   @override
   _AddPostScreenState createState() => _AddPostScreenState();
 }
-
 class _AddPostScreenState extends State<AddPostScreen> {
   final _formKey = GlobalKey<FormState>();
   String _name = '';
@@ -17,6 +17,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
   String _type = 'Modern';
   String _description = '';
   File? _image;
+  bool _isLoading = false; // Tambahkan variabel isLoading
 
   final picker = ImagePicker();
 
@@ -65,31 +66,53 @@ class _AddPostScreenState extends State<AddPostScreen> {
   }
 
   Future<void> _submitPost() async {
-    if (_formKey.currentState != null && _formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
+    try {
+      if (_formKey.currentState != null && _formKey.currentState!.validate()) {
+        _formKey.currentState!.save();
 
-      // Upload image to Firebase Storage
-      String? imageUrl;
-      if (_image != null) {
-        final storageRef = FirebaseStorage.instance.ref().child('batik_images').child(DateTime.now().toIso8601String());
-        await storageRef.putFile(_image!);
-        imageUrl = await storageRef.getDownloadURL();
+        setState(() {
+          _isLoading = true; // Set isLoading ke true saat memulai proses
+        });
+
+        // Upload image to Firebase Storage
+        String? imageUrl;
+        if (_image != null) {
+          final storageRef = FirebaseStorage.instance.ref().child('batik_images').child(DateTime.now().toIso8601String());
+          await storageRef.putFile(_image!);
+          imageUrl = await storageRef.getDownloadURL();
+        }
+
+        // Save post data to Firestore
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) {
+          throw Exception('User is not authenticated');
+        }
+
+        await FirebaseFirestore.instance.collection('posts').add({
+          'name': _name,
+          'date': _date,
+          'location': _location,
+          'type': _type,
+          'description': _description,
+          'imageUrl': imageUrl ?? '',
+          'timestamp': Timestamp.now(),
+          'userId': user.uid,
+        });
+
+        // Reset form and show success message
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Post added successfully')));
+        Navigator.of(context).pop();
+
+        setState(() {
+          _isLoading = false; // Set isLoading kembali ke false setelah selesai
+        });
       }
-
-      // Save post data to Firestore
-      await FirebaseFirestore.instance.collection('posts').add({
-        'name': _name,
-        'date': _date,
-        'location': _location,
-        'type': _type,
-        'description': _description,
-        'imageUrl': imageUrl ?? '',
-        'timestamp': Timestamp.now(),
+    } catch (e) {
+      print('Error submitting post: $e');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+      setState(() {
+        _isLoading = false; // Pastikan isLoading kembali ke false jika terjadi kesalahan
       });
-
-      // Show success message and clear form
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Post added successfully')));
-      Navigator.of(context).pop();
     }
   }
 
@@ -190,9 +213,10 @@ class _AddPostScreenState extends State<AddPostScreen> {
                 child: Text('Pick Image'),
               ),
               SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _submitPost,
-                child: Text('Submit Post'),
+              ElevatedButton.icon(
+                onPressed: _isLoading ? null : _submitPost,
+                icon: _isLoading ? CircularProgressIndicator() : Icon(Icons.upload),
+                label: Text(_isLoading ? 'Posting...' : 'Submit Post'),
               ),
             ],
           ),

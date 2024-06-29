@@ -9,6 +9,7 @@ class AddPostScreen extends StatefulWidget {
   @override
   _AddPostScreenState createState() => _AddPostScreenState();
 }
+
 class _AddPostScreenState extends State<AddPostScreen> {
   final _formKey = GlobalKey<FormState>();
   String _name = '';
@@ -17,7 +18,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
   String _type = 'Modern';
   String _description = '';
   File? _image;
-  bool _isLoading = false; // Tambahkan variabel isLoading
+  bool _isLoading = false;
 
   final picker = ImagePicker();
 
@@ -71,18 +72,19 @@ class _AddPostScreenState extends State<AddPostScreen> {
         _formKey.currentState!.save();
 
         setState(() {
-          _isLoading = true; // Set isLoading ke true saat memulai proses
+          _isLoading = true;
         });
 
-        // Upload image to Firebase Storage
         String? imageUrl;
         if (_image != null) {
-          final storageRef = FirebaseStorage.instance.ref().child('batik_images').child(DateTime.now().toIso8601String());
+          final storageRef = FirebaseStorage.instance
+              .ref()
+              .child('batik_images')
+              .child(DateTime.now().toIso8601String());
           await storageRef.putFile(_image!);
           imageUrl = await storageRef.getDownloadURL();
         }
 
-        // Save post data to Firestore
         final user = FirebaseAuth.instance.currentUser;
         if (user == null) {
           throw Exception('User is not authenticated');
@@ -99,19 +101,20 @@ class _AddPostScreenState extends State<AddPostScreen> {
           'userId': user.uid,
         });
 
-        // Reset form and show success message
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Post added successfully')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Post added successfully')));
         Navigator.of(context).pop();
 
         setState(() {
-          _isLoading = false; // Set isLoading kembali ke false setelah selesai
+          _isLoading = false;
         });
       }
     } catch (e) {
       print('Error submitting post: $e');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
       setState(() {
-        _isLoading = false; // Pastikan isLoading kembali ke false jika terjadi kesalahan
+        _isLoading = false;
       });
     }
   }
@@ -162,7 +165,10 @@ class _AddPostScreenState extends State<AddPostScreen> {
                   }
                 },
                 readOnly: true,
-                controller: TextEditingController(text: _date == null ? '' : _date!.toLocal().toString().split(' ')[0]),
+                controller: TextEditingController(
+                    text: _date == null
+                        ? ''
+                        : _date!.toLocal().toString().split(' ')[0]),
               ),
               TextFormField(
                 decoration: InputDecoration(labelText: 'Lokasi'),
@@ -215,7 +221,9 @@ class _AddPostScreenState extends State<AddPostScreen> {
               SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: _isLoading ? null : _submitPost,
-                icon: _isLoading ? CircularProgressIndicator() : Icon(Icons.upload),
+                icon: _isLoading
+                    ? CircularProgressIndicator()
+                    : Icon(Icons.upload),
                 label: Text(_isLoading ? 'Posting...' : 'Submit Post'),
               ),
             ],

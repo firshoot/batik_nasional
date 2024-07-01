@@ -1,14 +1,14 @@
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
-import 'package:batik_nasional/add_post_screen.dart'; // Import AddPostScreen
-import 'package:batik_nasional/sign_in_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'add_post_screen.dart';
+import 'sign_in_screen.dart';
 
 class Batik {
   final String name;
-  final String imageAsset; // Di sini kita akan simpan URL gambar.
+  final String imageAsset;
   final String location;
   final String built;
   final String type;
@@ -17,7 +17,7 @@ class Batik {
 
   Batik({
     required this.name,
-    required this.imageAsset, // URL gambar akan digunakan di sini.
+    required this.imageAsset,
     required this.location,
     required this.built,
     required this.type,
@@ -46,16 +46,74 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Center(
+          child: Container(
+            width: MediaQuery.of(context).size.width *
+                0.6, // Adjust width as needed
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Search...',
+                hintStyle: TextStyle(color: Colors.white70),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 15),
+              ),
+              style: TextStyle(color: Colors.white),
+              onChanged: (query) {
+                // Implement search functionality
+              },
+            ),
+          ),
+        ),
         actions: [
-          IconButton(
-            onPressed: () {
-              signOut(context);
+          Builder(
+            builder: (context) {
+              return IconButton(
+                icon: Icon(Icons.menu),
+                onPressed: () {
+                  Scaffold.of(context).openEndDrawer();
+                },
+              );
             },
-            icon: const Icon(Icons.logout),
           ),
         ],
+      ),
+      endDrawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            DrawerHeader(
+              child: Text('Menu'),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.inversePrimary,
+              ),
+            ),
+            ListTile(
+              title: Text('Profile'),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: Text('Settings'),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: Text('Help'),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: Text('Logout'),
+              onTap: () {
+                signOut(context);
+              },
+            ),
+          ],
+        ),
       ),
       body: StreamBuilder(
         stream: FirebaseFirestore.instance
@@ -102,9 +160,7 @@ class HomeScreen extends StatelessWidget {
                                   .split(' ')[0],
                               type: document['type'],
                               description: document['description'],
-                              imageUrls: [
-                                document['imageUrl']
-                              ], // URL gambar digunakan di sini.
+                              imageUrls: [document['imageUrl']],
                             ),
                           ),
                         ));
@@ -169,6 +225,10 @@ class _DetailScreenState extends State<DetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(widget.batik.name),
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -308,9 +368,7 @@ class _DetailScreenState extends State<DetailScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: GestureDetector(
-                            onTap: () {
-                              // Aksi saat gambar di galeri ditekan
-                            },
+                            onTap: () {},
                             child: Container(
                               decoration: BoxDecoration(),
                               child: ClipRRect(

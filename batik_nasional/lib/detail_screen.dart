@@ -192,7 +192,6 @@ class _DetailScreenState extends State<DetailScreen> {
                           padding: const EdgeInsets.only(right: 8),
                           child: GestureDetector(
                             onTap: () {
-                              // Aksi saat gambar di galeri ditekan
                             },
                             child: Container(
                               decoration: BoxDecoration(),

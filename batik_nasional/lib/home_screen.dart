@@ -130,6 +130,9 @@ class HomeScreen extends StatelessWidget {
 
           return ListView(
             children: snapshot.data!.docs.map((document) {
+              List<String> imageUrls = List<String>.from(document['imageUrls']);
+              String firstImageUrl = imageUrls.isNotEmpty ? imageUrls[0] : '';
+
               return Card(
                 margin: EdgeInsets.all(10),
                 child: Stack(
@@ -139,14 +142,13 @@ class HomeScreen extends StatelessWidget {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                              'Tanggal: ${document['date'].toDate().toLocal().toString().split(' ')[0]}'),
+                          Text('Tanggal: ${document['date'].toDate().toLocal().toString().split(' ')[0]}'),
                           Text('Lokasi: ${document['location']}'),
                           Text('Jenis: ${document['type']}'),
                           Text('Deskripsi: ${document['description']}'),
-                          document['imageUrl'] != null
-                              ? Image.network(document['imageUrl'])
-                              : Container(),
+                          firstImageUrl.isNotEmpty
+                            ? Image.network(firstImageUrl)
+                            : Container(),
                         ],
                       ),
                       onTap: () {
@@ -154,16 +156,12 @@ class HomeScreen extends StatelessWidget {
                           builder: (context) => DetailScreen(
                             batik: Batik(
                               name: document['name'],
-                              imageAsset: document['imageUrl'],
+                              imageAsset: firstImageUrl,
                               location: document['location'],
-                              built: document['date']
-                                  .toDate()
-                                  .toLocal()
-                                  .toString()
-                                  .split(' ')[0],
+                              built: document['date'].toDate().toLocal().toString().split(' ')[0],
                               type: document['type'],
                               description: document['description'],
-                              imageUrls: [document['imageUrl']],
+                              imageUrls: imageUrls,
                             ),
                           ),
                         ));

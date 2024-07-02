@@ -228,6 +228,11 @@ class _AddPostScreenState extends State<AddPostScreen> {
                         ),
                 ),
               ),
+              const SizedBox(height: 16),  // Add some space
+                    Text(
+                      'Gambar yang pertama adalah gambar yang akan ditampilkan di tampilan awal',
+                      style: TextStyle(fontSize: 12, color: const Color.fromARGB(255, 0, 0, 0)),  // Style it as needed
+                    ),
               TextFormField(
                 decoration: InputDecoration(labelText: 'Nama Batik'),
                 validator: (value) {

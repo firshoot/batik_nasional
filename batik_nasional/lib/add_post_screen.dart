@@ -17,18 +17,60 @@ class _AddPostScreenState extends State<AddPostScreen> {
   String _location = '';
   String _type = 'Modern';
   String _description = '';
-  File? _image;
+  List<File> _images = [];
   bool _isLoading = false;
 
   final picker = ImagePicker();
 
   Future<void> _getImage(ImageSource source) async {
-    final pickedFile = await picker.pickImage(source: source);
-    setState(() {
-      if (pickedFile != null) {
-        _image = File(pickedFile.path);
+    try {
+      List<XFile>? pickedFiles = await picker.pickMultiImage(
+        maxWidth: 1920, // optional, set maximum width of image picked
+        maxHeight: 1080, // optional, set maximum height of image picked
+        imageQuality: 80, // optional, set the quality of image picked
+      );
+      
+      if (pickedFiles != null) {
+        if (_images.length + pickedFiles.length > 10) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Maximum 10 images allowed')),
+          );
+          return;
+        }
+
+        setState(() {
+          _images.addAll(pickedFiles.map((pickedFile) => File(pickedFile.path)).toList());
+        });
       }
-    });
+    } catch (e) {
+      print('Error picking images: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking images: $e')),
+      );
+    }
+  }
+
+  Future<void> _takePicture() async {
+    try {
+      if (_images.length >= 10) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Maximum 10 images allowed')),
+        );
+        return;
+      }
+
+      final pickedFile = await picker.pickImage(source: ImageSource.camera);
+      if (pickedFile != null) {
+        setState(() {
+          _images.add(File(pickedFile.path));
+        });
+      }
+    } catch (e) {
+      print('Error taking picture: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error taking picture: $e')),
+      );
+    }
   }
 
   void _showPicker() {
@@ -57,7 +99,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
               title: const Text("Kamera"),
               onTap: () {
                 Navigator.of(context).pop();
-                _getImage(ImageSource.camera);
+                _takePicture();
               },
             ),
           ],
@@ -69,20 +111,28 @@ class _AddPostScreenState extends State<AddPostScreen> {
   Future<void> _submitPost() async {
     try {
       if (_formKey.currentState != null && _formKey.currentState!.validate()) {
+        if (_images.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gambar Tidak Boleh Kosong')),
+          );
+          return;
+        }
+
         _formKey.currentState!.save();
 
         setState(() {
           _isLoading = true;
         });
 
-        String? imageUrl;
-        if (_image != null) {
+        List<String> imageUrls = [];
+        for (var image in _images) {
           final storageRef = FirebaseStorage.instance
               .ref()
               .child('batik_images')
-              .child(DateTime.now().toIso8601String());
-          await storageRef.putFile(_image!);
-          imageUrl = await storageRef.getDownloadURL();
+              .child(DateTime.now().toIso8601String() + '_' + image.path.split('/').last);
+          await storageRef.putFile(image);
+          final imageUrl = await storageRef.getDownloadURL();
+          imageUrls.add(imageUrl);
         }
 
         final user = FirebaseAuth.instance.currentUser;
@@ -96,7 +146,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
           'location': _location,
           'type': _type,
           'description': _description,
-          'imageUrl': imageUrl ?? '',
+          'imageUrls': imageUrls,
           'timestamp': Timestamp.now(),
           'userId': user.uid,
         });
@@ -119,6 +169,12 @@ class _AddPostScreenState extends State<AddPostScreen> {
     }
   }
 
+  void _removeImage(int index) {
+    setState(() {
+      _images.removeAt(index);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -131,11 +187,52 @@ class _AddPostScreenState extends State<AddPostScreen> {
           key: _formKey,
           child: ListView(
             children: [
+              GestureDetector(
+                onTap: _showPicker,
+                child: Container(
+                  height: 200,
+                  color: Colors.grey[200],
+                  child: _images.isEmpty
+                      ? Center(child: Text('Tekan untuk memilih metode pengambilan gambar'))
+                      : ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _images.length,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Stack(
+                                children: [
+                                  Image.file(
+                                    _images[index],
+                                    fit: BoxFit.cover,
+                                    width: 150,
+                                  ),
+                                  Positioned(
+                                    top: 0,
+                                    right: 0,
+                                    child: GestureDetector(
+                                      onTap: () => _removeImage(index),
+                                      child: Container(
+                                        color: Colors.black54,
+                                        child: Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ),
               TextFormField(
                 decoration: InputDecoration(labelText: 'Nama Batik'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter the name of the batik';
+                    return 'Nama Tidak Boleh Kosong';
                   }
                   return null;
                 },
@@ -147,7 +244,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
                 decoration: InputDecoration(labelText: 'Tanggal Pembuatan'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter the date';
+                    return 'Tanggal Tidak Boleh Kosong';
                   }
                   return null;
                 },
@@ -174,7 +271,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
                 decoration: InputDecoration(labelText: 'Lokasi'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter the location';
+                    return 'Lokasi Tidak Boleh Kosong';
                   }
                   return null;
                 },
@@ -202,7 +299,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
                 maxLines: 5,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter a description';
+                    return 'Deskripsi Tidak Boleh Kosong';
                   }
                   return null;
                 },
@@ -211,20 +308,11 @@ class _AddPostScreenState extends State<AddPostScreen> {
                 },
               ),
               SizedBox(height: 20),
-              _image == null
-                  ? Text('No image selected.')
-                  : Image.file(_image!, height: 200, width: 200),
               ElevatedButton(
-                onPressed: _showPicker,
-                child: Text('Pick Image'),
-              ),
-              SizedBox(height: 20),
-              ElevatedButton.icon(
                 onPressed: _isLoading ? null : _submitPost,
-                icon: _isLoading
+                child: _isLoading
                     ? CircularProgressIndicator()
-                    : Icon(Icons.upload),
-                label: Text(_isLoading ? 'Posting...' : 'Submit Post'),
+                    : Text(_isLoading ? 'Posting...' : 'Submit Post'),
               ),
             ],
           ),

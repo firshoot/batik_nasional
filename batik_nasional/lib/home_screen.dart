@@ -49,8 +49,7 @@ class HomeScreen extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Center(
           child: Container(
-            width: MediaQuery.of(context).size.width *
-                0.6, // Adjust width as needed
+            width: MediaQuery.of(context).size.width * 0.6, // Adjust width as needed
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Search...',
@@ -123,6 +122,10 @@ class HomeScreen extends StatelessWidget {
         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
           if (!snapshot.hasData) {
             return Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.data!.docs.isEmpty) {
+            return Center(child: Text('Postingan Masih Kosong'));
           }
 
           return ListView(

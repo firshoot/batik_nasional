@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 import 'add_post_screen.dart';
 import 'sign_in_screen.dart';
 
@@ -147,7 +148,12 @@ class HomeScreen extends StatelessWidget {
                           Text('Jenis: ${document['type']}'),
                           Text('Deskripsi: ${document['description']}'),
                           firstImageUrl.isNotEmpty
-                            ? Image.network(firstImageUrl)
+                            ? Image.network(
+                                firstImageUrl,
+                                height: 150, // Adjust the height as needed
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              )
                             : Container(),
                         ],
                       ),
@@ -207,6 +213,7 @@ class DetailScreen extends StatefulWidget {
 
 class _DetailScreenState extends State<DetailScreen> {
   bool isSignedIn = false;
+  TextEditingController _commentController = TextEditingController();
 
   @override
   void initState() {
@@ -221,6 +228,18 @@ class _DetailScreenState extends State<DetailScreen> {
     setState(() {
       isSignedIn = signedIn;
     });
+  }
+
+  Future<void> _postComment(String postId, String comment) async {
+    if (comment.isNotEmpty) {
+      await FirebaseFirestore.instance.collection('comments').add({
+        'postId': postId,
+        'comment': comment,
+        'timestamp': Timestamp.now(),
+      });
+
+      _commentController.clear();
+    }
   }
 
   @override
@@ -239,12 +258,19 @@ class _DetailScreenState extends State<DetailScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(20),
-                    child: widget.batik.imageAsset.isNotEmpty
-                        ? Image.network(
-                            widget.batik.imageAsset,
-                            width: double.infinity,
+                    child: widget.batik.imageUrls.isNotEmpty
+                        ? Container(
                             height: 300,
-                            fit: BoxFit.cover,
+                            child: PageView.builder(
+                              itemCount: widget.batik.imageUrls.length,
+                              itemBuilder: (context, index) {
+                                return Image.network(
+                                  widget.batik.imageUrls[index],
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                );
+                              },
+                            ),
                           )
                         : Container(
                             height: 300,
@@ -254,23 +280,7 @@ class _DetailScreenState extends State<DetailScreen> {
                           ),
                   ),
                 ),
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade100.withOpacity(0.5),
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      icon: const Icon(Icons.arrow_back),
-                    ),
-                  ),
-                ),
-              ],
+              ]
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -356,38 +366,60 @@ class _DetailScreenState extends State<DetailScreen> {
                 children: [
                   Divider(color: Colors.blue.shade100),
                   const Text(
-                    'Galeri',
+                    'Komentar',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  SizedBox(
-                    height: 100,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: widget.batik.imageUrls.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: GestureDetector(
-                            onTap: () {},
-                            child: Container(
-                              decoration: BoxDecoration(),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: CachedNetworkImage(
-                                  imageUrl: widget.batik.imageUrls[index],
-                                  placeholder: (context, url) =>
-                                      CircularProgressIndicator(),
-                                  errorWidget: (context, url, error) =>
-                                      Icon(Icons.error),
+                  StreamBuilder(
+                    stream: FirebaseFirestore.instance
+                        .collection('comments')
+                        .where('postId', isEqualTo: widget.batik.name)
+                        .orderBy('timestamp', descending: true)
+                        .snapshots(),
+                    builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                      if (!snapshot.hasData) {
+                        return Center(child: CircularProgressIndicator());
+                      }
+
+                      return ListView(
+                        shrinkWrap: true,
+                        children: snapshot.data!.docs.map((document) {
+                          return ListTile(
+                            title: Text(document['comment']),
+                            subtitle: Text(
+                                document['timestamp'].toDate().toString()),
+                          );
+                        }).toList(),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  isSignedIn
+                      ? Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _commentController,
+                                decoration: InputDecoration(
+                                  hintText: 'Add a comment...',
                                 ),
                               ),
                             ),
+                            IconButton(
+                              icon: Icon(Icons.send),
+                              onPressed: () {
+                                _postComment(widget.batik.name,
+                                    _commentController.text);
+                              },
+                            ),
+                          ],
+                        )
+                      : Center(
+                          child: Text(
+                            'Sign in to post comments',
+                            style: TextStyle(color: Colors.red),
                           ),
-                        );
-                      },
-                    ),
-                  ),
+                        ),
                 ],
               ),
             ),

@@ -19,7 +19,7 @@ class SignUpScreenState extends State<SignUpScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sign Up'),
+        title: const Text('Daftar'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -79,7 +79,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                   print(error.toString());
                 }
               },
-              child: const Text('Sign Up'),
+              child: const Text('Daftar'),
             ),
           ],
         ),

@@ -52,7 +52,7 @@ class SignInScreenState extends State<SignInScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sign In'),
+        title: const Text('Login'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -99,7 +99,7 @@ class SignInScreenState extends State<SignInScreen> {
                     );
                   }
                 },
-                child: const Text('Sign In'),
+                child: const Text('Login'),
               ),
               const SizedBox(height: 16.0),
               ElevatedButton.icon(
@@ -117,7 +117,7 @@ class SignInScreenState extends State<SignInScreen> {
                     ),
                   );
                 },
-                child: const Text('Don\'t have an account? Sign up'),
+                child: const Text('Belum Punya Akun? Daftar'),
               ),
             ],
           ),

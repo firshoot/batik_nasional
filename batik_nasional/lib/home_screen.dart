@@ -154,7 +154,7 @@ class Batik {
           ],
         ),
       ),
-body: StreamBuilder(
+      body: StreamBuilder(
         stream: FirebaseFirestore.instance
           .collection('posts')
           .where('status', isEqualTo: 'approved')
@@ -179,13 +179,8 @@ body: StreamBuilder(
             return const Center(child: Text('Postingan Masih Kosong'));
           }
 
-          var filteredDocs = snapshot.data!.docs.where((document) {
-            var name = document['name'].toString().toLowerCase();
-            return name.contains(_searchQuery.toLowerCase());
-          }).toList();
-
           return ListView(
-            children: filteredDocs.map((document) {
+            children: snapshot.data!.docs.map((document) {
               List<String> imageUrls = List<String>.from(document['imageUrls']);
               String firstImageUrl = imageUrls.isNotEmpty ? imageUrls[0] : '';
 
@@ -269,6 +264,8 @@ class DetailScreen extends StatefulWidget {
 class _DetailScreenState extends State<DetailScreen> {
   bool isSignedIn = false;
   final TextEditingController _commentController = TextEditingController();
+  late String? userProfileImage;
+  late String userEmail;
 
   @override
   void initState() {
@@ -279,25 +276,39 @@ class _DetailScreenState extends State<DetailScreen> {
   Future<void> _checkSignInStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool signedIn = prefs.getBool('isSignedIn') ?? false;
-
-    setState(() {
-      isSignedIn = signedIn;
-    });
-  }
-
-  Future<void> _postComment(String postId, String comment) async {
-    if (comment.isNotEmpty) {
-      await FirebaseFirestore.instance.collection('comments').add({
-        'postId': postId,
-        'comment': comment,
-        'timestamp': Timestamp.now(),
+    var user = auth.FirebaseAuth.instance.currentUser;
+    
+    if (user != null) {
+      var userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      setState(() {
+        isSignedIn = signedIn;
+        userProfileImage = userDoc.data()?['profileImage'];
+        userEmail = user.email!;
       });
-
-      _commentController.clear();
     }
   }
 
-   @override
+Future<void> _postComment(String name, String comment) async {
+  var user = auth.FirebaseAuth.instance.currentUser;
+  if (user != null && comment.isNotEmpty) {
+    var userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    var userName = userDoc.data()?['name'] ?? user.email;
+
+    await FirebaseFirestore.instance.collection('comments').add({
+      'name': name, // Menggunakan field 'name' atau 'postId' yang sesuai
+      'comment': comment,
+      'userName': userName,
+      'userEmail': user.email,
+      'profileImage': userProfileImage,
+      'timestamp': Timestamp.now(),
+    });
+
+    _commentController.clear();
+  }
+}
+
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -426,23 +437,40 @@ class _DetailScreenState extends State<DetailScreen> {
                   ),
                   const SizedBox(height: 8),
                   StreamBuilder(
-                    stream: FirebaseFirestore.instance
-                        .collection('comments')
-                        .where('postId', isEqualTo: widget.batik.name)
-                        .orderBy('timestamp', descending: true)
-                        .snapshots(),
-                    builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                      if (!snapshot.hasData) {
+  stream: FirebaseFirestore.instance
+    .collection('comments')
+    .where('name', isEqualTo: widget.batik.name) // Menggunakan field 'name' untuk query
+    .orderBy('timestamp', descending: true)
+    .snapshots(),
+  builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
+                      }
+
+                      if (snapshot.hasError) {
+                        print("Error: ${snapshot.error}");
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      }
+
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return const Center(child: Text('Belum ada komentar'));
                       }
 
                       return ListView(
                         shrinkWrap: true,
                         children: snapshot.data!.docs.map((document) {
+                          String profileImage = document['profileImage'] ?? '';
                           return ListTile(
+                            leading: CircleAvatar(
+                              backgroundImage: profileImage.isNotEmpty
+                                ? NetworkImage(profileImage)
+                                : null,
+                              child: profileImage.isEmpty
+                                ? const Icon(Icons.person)
+                                : null,
+                            ),
                             title: Text(document['comment']),
-                            subtitle: Text(
-                                document['timestamp'].toDate().toString()),
+                            subtitle: Text('By: ${document['userName']}'),
                           );
                         }).toList(),
                       );
@@ -463,8 +491,7 @@ class _DetailScreenState extends State<DetailScreen> {
                             IconButton(
                               icon: const Icon(Icons.send),
                               onPressed: () {
-                                _postComment(widget.batik.name,
-                                    _commentController.text);
+                                _postComment(widget.batik.name, _commentController.text);
                               },
                             ),
                           ],

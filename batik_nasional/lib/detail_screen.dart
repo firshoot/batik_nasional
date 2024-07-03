@@ -16,6 +16,7 @@ class DetailScreen extends StatefulWidget {
 class _DetailScreenState extends State<DetailScreen> {
   bool isSignedIn = false;
   bool isAdmin = false;
+  bool isUploader = false; // Tambahkan variabel ini
   final TextEditingController _commentController = TextEditingController();
   late String? userProfileImage;
   late String userEmail = ''; // Inisialisasi userEmail dengan nilai awal
@@ -41,6 +42,7 @@ class _DetailScreenState extends State<DetailScreen> {
         userProfileImage = userDoc.data()?['profileImage'];
         userEmail = user.email ?? ''; // Pastikan userEmail diinisialisasi
         isAdmin = userDoc.data()?['role'] == 'admin';
+        isUploader = user.uid == widget.batik.userId; // Periksa apakah pengguna adalah pengupload
       });
     }
   }
@@ -93,6 +95,20 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
+  Future<void> _deletePost() async {
+    // Hapus postingan dari Firestore
+    await FirebaseFirestore.instance
+        .collection('posts')
+        .doc(widget.batik.id)
+        .delete();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Postingan telah dihapus')),
+    );
+
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -101,6 +117,34 @@ class _DetailScreenState extends State<DetailScreen> {
         title: Text(
           widget.batik.name ?? '', // Pastikan widget.batik.name tidak null
         ),
+        actions: [
+          if (isAdmin || isUploader) // Tampilkan tombol hapus hanya untuk admin atau pengupload
+            IconButton(
+              icon: Icon(Icons.delete),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text('Konfirmasi'),
+                    content: Text('Apakah Anda yakin ingin menghapus postingan ini?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: Text('Batal'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          _deletePost();
+                        },
+                        child: Text('Hapus'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -210,44 +254,19 @@ class _DetailScreenState extends State<DetailScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(widget.batik.description ?? ''),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(15),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Divider(color: Colors.blue.shade100),
-                  const Text(
-                    'Komentar',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                  const SizedBox(height: 16),
+                  Divider(color: Colors.blue.shade200),
                   const SizedBox(height: 8),
-                  StreamBuilder(
+                  StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('comments')
-                        .where('name',
-                            isEqualTo: widget.batik
-                                .name) // Menggunakan field 'name' untuk query
-                        .orderBy('timestamp', descending: true)
+                        .where('name', isEqualTo: widget.batik.name)
                         .snapshots(),
-                    builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
                         return const Center(child: CircularProgressIndicator());
                       }
-
-                      if (snapshot.hasError) {
-                        print("Error: ${snapshot.error}");
-                        return Center(child: Text('Error: ${snapshot.error}'));
-                      }
-
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return const Center(child: Text('Belum ada komentar'));
-                      }
-
-                      return ListView(
-                        shrinkWrap: true,
+                      return Column(
                         children: snapshot.data!.docs.map((document) {
                           String profileImage = document['profileImage'] ?? '';
                           bool isCommentOwner =

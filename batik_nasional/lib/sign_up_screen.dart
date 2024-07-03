@@ -13,12 +13,13 @@ class SignUpScreen extends StatefulWidget {
 class SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  String _role = 'user'; // Default role
+  final String _defaultRole = 'user'; // Default role
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('Daftar'),
       ),
       body: Padding(
@@ -43,33 +44,21 @@ class SignUpScreenState extends State<SignUpScreen> {
               obscureText: true,
             ),
             const SizedBox(height: 16.0),
-            DropdownButtonFormField(
-              value: _role,
-              items: ['user', 'admin'].map((String role) {
-                return DropdownMenuItem(value: role, child: Text(role));
-              }).toList(),
-              onChanged: (newValue) {
-                setState(() {
-                  _role = newValue!;
-                });
-              },
-              decoration: const InputDecoration(
-                labelText: 'Role',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16.0),
             ElevatedButton(
               onPressed: () async {
                 try {
-                  UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                  UserCredential userCredential =
+                      await FirebaseAuth.instance.createUserWithEmailAndPassword(
                     email: _emailController.text,
                     password: _passwordController.text,
                   );
 
-                  await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(userCredential.user!.uid)
+                      .set({
                     'email': _emailController.text,
-                    'role': _role,
+                    'role': _defaultRole, // Set to default role
                   });
 
                   Navigator.of(context).pushReplacement(

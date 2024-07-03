@@ -1,9 +1,9 @@
+import 'package:batik_nasional/admin_post_review_screen.dart';
+import 'package:batik_nasional/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:carousel_slider/carousel_slider.dart';
 import 'add_post_screen.dart';
 import 'sign_in_screen.dart';
 
@@ -43,6 +43,15 @@ class HomeScreen extends StatelessWidget {
     });
   }
 
+  Future<bool> isAdmin() async {
+    var user = auth.FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      var doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      return doc.exists && doc.data()?['role'] == 'admin';
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,15 +59,15 @@ class HomeScreen extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Center(
           child: Container(
-            width: MediaQuery.of(context).size.width * 0.6, // Adjust width as needed
+            width: MediaQuery.of(context).size.width * 0.6,
             child: TextField(
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'Search...',
                 hintStyle: TextStyle(color: Colors.white70),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(vertical: 15),
               ),
-              style: TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.white),
               onChanged: (query) {
                 // Implement search functionality
               },
@@ -69,7 +78,7 @@ class HomeScreen extends StatelessWidget {
           Builder(
             builder: (context) {
               return IconButton(
-                icon: Icon(Icons.menu),
+                icon: const Icon(Icons.menu),
                 onPressed: () {
                   Scaffold.of(context).openEndDrawer();
                 },
@@ -83,31 +92,50 @@ class HomeScreen extends StatelessWidget {
           padding: EdgeInsets.zero,
           children: <Widget>[
             DrawerHeader(
-              child: Text('Menu'),
+              child: const Text('Menu'),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.inversePrimary,
               ),
             ),
+            FutureBuilder<bool>(
+              future: isAdmin(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const ListTile(
+                    title: Text('Loading...'),
+                  );
+                }
+                if (snapshot.hasData && snapshot.data!) {
+                  return ListTile(
+                    title: const Text('Admin Post Review'),
+                    onTap: () {
+                      Navigator.of(context).push(MaterialPageRoute(builder: (context) => AdminPostReviewScreen()));
+                    },
+                  );
+                }
+                return Container(); // Return an empty container if the user is not an admin
+              },
+            ),
             ListTile(
-              title: Text('Profile'),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.of(context).push(MaterialPageRoute(builder: (context) => ProfileScreen()));
+              },
+            ),
+            ListTile(
+              title: const Text('Settings'),
               onTap: () {
                 Navigator.pop(context);
               },
             ),
             ListTile(
-              title: Text('Settings'),
+              title: const Text('Help'),
               onTap: () {
                 Navigator.pop(context);
               },
             ),
             ListTile(
-              title: Text('Help'),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              title: Text('Logout'),
+              title: const Text('Logout'),
               onTap: () {
                 signOut(context);
               },
@@ -117,16 +145,27 @@ class HomeScreen extends StatelessWidget {
       ),
       body: StreamBuilder(
         stream: FirebaseFirestore.instance
-            .collection('posts')
-            .orderBy('timestamp', descending: true)
-            .snapshots(),
+          .collection('posts')
+          .where('status', isEqualTo: 'approved')
+          .orderBy('timestamp', descending: true)
+          .snapshots(),
         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            print("Error: ${snapshot.error}");
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
           if (!snapshot.hasData) {
-            return Center(child: CircularProgressIndicator());
+            print("No Data Available");
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.data!.docs.isEmpty) {
-            return Center(child: Text('Postingan Masih Kosong'));
+            return const Center(child: Text('Postingan Masih Kosong'));
           }
 
           return ListView(
@@ -135,7 +174,7 @@ class HomeScreen extends StatelessWidget {
               String firstImageUrl = imageUrls.isNotEmpty ? imageUrls[0] : '';
 
               return Card(
-                margin: EdgeInsets.all(10),
+                margin: const EdgeInsets.all(10),
                 child: Stack(
                   children: [
                     ListTile(
@@ -150,7 +189,7 @@ class HomeScreen extends StatelessWidget {
                           firstImageUrl.isNotEmpty
                             ? Image.network(
                                 firstImageUrl,
-                                height: 150, // Adjust the height as needed
+                                height: 150,
                                 width: double.infinity,
                                 fit: BoxFit.cover,
                               )
@@ -177,7 +216,7 @@ class HomeScreen extends StatelessWidget {
                       bottom: 8,
                       right: 8,
                       child: IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red),
+                        icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () {
                           deletePost(document);
                         },
@@ -213,7 +252,7 @@ class DetailScreen extends StatefulWidget {
 
 class _DetailScreenState extends State<DetailScreen> {
   bool isSignedIn = false;
-  TextEditingController _commentController = TextEditingController();
+  final TextEditingController _commentController = TextEditingController();
 
   @override
   void initState() {
@@ -276,150 +315,106 @@ class _DetailScreenState extends State<DetailScreen> {
                             height: 300,
                             width: double.infinity,
                             color: Colors.grey,
-                            child: Center(child: Text('No Image')),
+                            child: const Center(child: Text('No Image')),
                           ),
                   ),
                 ),
-              ]
+              ],
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 8),
                   Text(
                     widget.batik.name,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.batik.description,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_pin, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Text(widget.batik.location),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.place,
-                        color: Colors.red,
-                      ),
+                      const Icon(Icons.date_range, color: Colors.grey),
                       const SizedBox(width: 8),
-                      const SizedBox(
-                        width: 70,
-                        child: Text(
-                          'Lokasi',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      Text(' : ${widget.batik.location}')
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.calendar_month,
-                        color: Colors.blue,
-                      ),
-                      const SizedBox(width: 8),
-                      const SizedBox(
-                        width: 70,
-                        child: Text(
-                          'Dibangun',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      Text(' : ${widget.batik.built}')
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.house,
-                        color: Colors.green,
-                      ),
-                      const SizedBox(width: 8),
-                      const SizedBox(
-                        width: 70,
-                        child: Text(
-                          'Tipe',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      Text(' : ${widget.batik.type}')
+                      Text(widget.batik.built),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Divider(color: Colors.blue.shade200),
-                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.category, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Text(widget.batik.type),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   const Text(
-                    'Deskripsi',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    'Comments',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 8),
-                  Text(widget.batik.description),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(15),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Divider(color: Colors.blue.shade100),
-                  const Text(
-                    'Komentar',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  StreamBuilder(
+                  const Divider(),
+                  StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('comments')
                         .where('postId', isEqualTo: widget.batik.name)
                         .orderBy('timestamp', descending: true)
                         .snapshots(),
-                    builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                    builder: (context, snapshot) {
                       if (!snapshot.hasData) {
-                        return Center(child: CircularProgressIndicator());
+                        return const CircularProgressIndicator();
                       }
 
-                      return ListView(
+                      var comments = snapshot.data!.docs;
+
+                      if (comments.isEmpty) {
+                        return const Text('No comments yet.');
+                      }
+
+                      return ListView.builder(
                         shrinkWrap: true,
-                        children: snapshot.data!.docs.map((document) {
+                        itemCount: comments.length,
+                        itemBuilder: (context, index) {
+                          var comment = comments[index];
                           return ListTile(
-                            title: Text(document['comment']),
+                            title: Text(comment['comment']),
                             subtitle: Text(
-                                document['timestamp'].toDate().toString()),
+                                comment['timestamp'].toDate().toString()),
                           );
-                        }).toList(),
+                        },
                       );
                     },
                   ),
-                  const SizedBox(height: 8),
-                  isSignedIn
-                      ? Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _commentController,
-                                decoration: InputDecoration(
-                                  hintText: 'Add a comment...',
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.send),
-                              onPressed: () {
-                                _postComment(widget.batik.name,
-                                    _commentController.text);
-                              },
-                            ),
-                          ],
-                        )
-                      : Center(
-                          child: Text(
-                            'Sign in to post comments',
-                            style: TextStyle(color: Colors.red),
+                  const SizedBox(height: 16),
+                  if (isSignedIn)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _commentController,
+                            decoration:
+                                const InputDecoration(hintText: 'Add a comment'),
                           ),
                         ),
+                        IconButton(
+                          icon: const Icon(Icons.send),
+                          onPressed: () {
+                            _postComment(widget.batik.name, _commentController.text);
+                          },
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),

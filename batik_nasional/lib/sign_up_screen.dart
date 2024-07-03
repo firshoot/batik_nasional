@@ -1,9 +1,11 @@
 import 'package:batik_nasional/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
+
   @override
   SignUpScreenState createState() => SignUpScreenState();
 }
@@ -11,6 +13,8 @@ class SignUpScreen extends StatefulWidget {
 class SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  String _role = 'user'; // Default role
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -39,13 +43,35 @@ class SignUpScreenState extends State<SignUpScreen> {
               obscureText: true,
             ),
             const SizedBox(height: 16.0),
+            DropdownButtonFormField(
+              value: _role,
+              items: ['user', 'admin'].map((String role) {
+                return DropdownMenuItem(value: role, child: Text(role));
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _role = newValue!;
+                });
+              },
+              decoration: const InputDecoration(
+                labelText: 'Role',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16.0),
             ElevatedButton(
               onPressed: () async {
                 try {
-                  await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                  UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
                     email: _emailController.text,
                     password: _passwordController.text,
                   );
+
+                  await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+                    'email': _emailController.text,
+                    'role': _role,
+                  });
+
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(builder: (context) => const HomeScreen()),
                   );

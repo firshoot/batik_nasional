@@ -24,12 +24,12 @@ class _AddPostScreenState extends State<AddPostScreen> {
 
   Future<void> _getImage(ImageSource source) async {
     try {
-      List<XFile>? pickedFiles = await picker.pickMultiImage(
-        maxWidth: 1920, // optional, set maximum width of image picked
-        maxHeight: 1080, // optional, set maximum height of image picked
-        imageQuality: 80, // optional, set the quality of image picked
+      final pickedFiles = await picker.pickMultiImage(
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 80,
       );
-      
+
       if (pickedFiles != null) {
         if (_images.length + pickedFiles.length > 10) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -140,6 +140,9 @@ class _AddPostScreenState extends State<AddPostScreen> {
           throw Exception('User is not authenticated');
         }
 
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        final userEmail = userDoc['email'];
+
         await FirebaseFirestore.instance.collection('posts').add({
           'name': _name,
           'date': _date,
@@ -149,10 +152,14 @@ class _AddPostScreenState extends State<AddPostScreen> {
           'imageUrls': imageUrls,
           'timestamp': Timestamp.now(),
           'userId': user.uid,
+          'userEmail': userEmail,
+          'status': 'pending', // Set status to pending for admin review
         });
 
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Post added successfully')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Postingan telah dikirim untuk review')),
+        );
+
         Navigator.of(context).pop();
 
         setState(() {
@@ -179,7 +186,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Add Post'),
+        title: Text('Tambah Postingan'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -228,11 +235,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
                         ),
                 ),
               ),
-              const SizedBox(height: 16),  // Add some space
-                    Text(
-                      'Gambar yang pertama adalah gambar yang akan ditampilkan di tampilan awal',
-                      style: TextStyle(fontSize: 12, color: const Color.fromARGB(255, 0, 0, 0)),  // Style it as needed
-                    ),
+              const SizedBox(height: 16),
               TextFormField(
                 decoration: InputDecoration(labelText: 'Nama Batik'),
                 validator: (value) {

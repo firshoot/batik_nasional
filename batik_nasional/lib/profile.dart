@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import 'theme_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -60,7 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'imageUrl': _imageUrl,
       }, SetOptions(merge: true));
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Profile Berhasil Di Simpan')),
+        SnackBar(content: Text('Profile Berhasil Disimpan')),
       );
     }
   }
@@ -70,6 +72,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Profile'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.dark_mode),
+            onPressed: () {
+              Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

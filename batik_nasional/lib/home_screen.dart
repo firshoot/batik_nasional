@@ -153,18 +153,6 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             ListTile(
-              title: const Text('Settings'),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              title: const Text('Help'),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
               title: const Text('Logout'),
               onTap: () {
                 signOut(context);
@@ -243,17 +231,20 @@ class PostList extends StatelessWidget {
           return Center(child: CircularProgressIndicator());
         }
 
-        // Handle notifications for new posts
-        if (snapshot.connectionState == ConnectionState.active) {
-          sendNotification('Ada postingan baru!');
-        }
+        // Filter posts based on the search query by name
+        var filteredDocs = snapshot.data!.docs.where((doc) {
+          var name = doc['name'].toString().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+          var query = searchQuery.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
 
-        if (snapshot.data!.docs.isEmpty) {
-          return Center(child: Text('Postingan Masih Kosong'));
+          return name.contains(query);
+        }).toList();
+
+        if (filteredDocs.isEmpty) {
+          return Center(child: Text('Postingan Tidak Ditemukan'));
         }
 
         return ListView(
-          children: snapshot.data!.docs.map((document) {
+          children: filteredDocs.map((document) {
             List<String> imageUrls = List<String>.from(document['imageUrls']);
             String firstImageUrl = imageUrls.isNotEmpty ? imageUrls[0] : '';
 
@@ -299,16 +290,6 @@ class PostList extends StatelessWidget {
                                 )
                               : Container(),
                         ],
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 8,
-                      right: 8,
-                      child: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                          deletePost(document);
-                        },
                       ),
                     ),
                   ],

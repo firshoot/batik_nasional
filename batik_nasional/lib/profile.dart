@@ -27,9 +27,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (user != null) {
       DocumentSnapshot userProfile = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
       if (userProfile.exists) {
+        Map<String, dynamic> data = userProfile.data() as Map<String, dynamic>;
         setState(() {
-          _nameController.text = userProfile['name'];
-          _imageUrl = userProfile['imageUrl'];
+          _nameController.text = data.containsKey('name') ? data['name'] : '';
+          _imageUrl = data.containsKey('imageUrl') ? data['imageUrl'] : '';
         });
       }
     }
@@ -57,7 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'name': _nameController.text,
         'imageUrl': _imageUrl,
-      });
+      }, SetOptions(merge: true));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Profile Berhasil Di Simpan')),
       );

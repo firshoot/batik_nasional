@@ -1,43 +1,26 @@
-import 'package:batik_nasional/admin_post_review_screen.dart';
-import 'package:batik_nasional/profile.dart';
+import 'package:batik_nasional/notifications_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'add_post_screen.dart';
-import 'sign_in_screen.dart';
+import 'package:batik_nasional/models/batik.dart'; // Sesuaikan dengan struktur proyek Anda
+import 'package:batik_nasional/admin_post_review_screen.dart';
+import 'package:batik_nasional/profile.dart';
+import 'package:batik_nasional/add_post_screen.dart';
+import 'package:batik_nasional/sign_in_screen.dart';
+import 'package:batik_nasional/detail_screen.dart'; // Jika belum diimport
+import 'report_screen.dart'; // Import ReportScreen
 
-class Batik {
-  final String name;
-  final String imageAsset;
-  final String location;
-  final String built;
-  final String type;
-  final String description;
-  final List<String> imageUrls;
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({Key? key}) : super(key: key);
 
-  Batik({
-    required this.name,
-    required this.imageAsset,
-    required this.location,
-    required this.built,
-    required this.type,
-    required this.description,
-    required this.imageUrls,
-  });
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
 }
 
-  class HomeScreen extends StatefulWidget {
-    const HomeScreen({Key? key}) : super(key: key);
+class _HomeScreenState extends State<HomeScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
-    @override
-    _HomeScreenState createState() => _HomeScreenState();
-  }
-
-  class _HomeScreenState extends State<HomeScreen> {
-    final TextEditingController _searchController = TextEditingController();
-    String _searchQuery = '';
-  
   Future<void> signOut(BuildContext context) async {
     await auth.FirebaseAuth.instance.signOut();
     Navigator.of(context).pushReplacement(
@@ -45,8 +28,7 @@ class Batik {
   }
 
   Future<void> deletePost(DocumentSnapshot document) async {
-    await FirebaseFirestore.instance
-        .runTransaction((Transaction transaction) async {
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
       await transaction.delete(document.reference);
     });
   }
@@ -54,10 +36,24 @@ class Batik {
   Future<bool> isAdmin() async {
     var user = auth.FirebaseAuth.instance.currentUser;
     if (user != null) {
-      var doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      var doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
       return doc.exists && doc.data()?['role'] == 'admin';
     }
     return false;
+  }
+
+  Future<void> sendNotification(String message) async {
+    var user = auth.FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'userId': user.uid,
+        'message': message,
+        'timestamp': Timestamp.now(),
+      });
+    }
   }
 
   @override
@@ -120,7 +116,8 @@ class Batik {
                   return ListTile(
                     title: const Text('Admin Post Review'),
                     onTap: () {
-                      Navigator.of(context).push(MaterialPageRoute(builder: (context) => AdminPostReviewScreen()));
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (context) => AdminPostReviewScreen()));
                     },
                   );
                 }
@@ -130,7 +127,8 @@ class Batik {
             ListTile(
               title: const Text('Profile'),
               onTap: () {
-                Navigator.of(context).push(MaterialPageRoute(builder: (context) => ProfileScreen()));
+                Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => ProfileScreen()));
               },
             ),
             ListTile(
@@ -151,40 +149,113 @@ class Batik {
                 signOut(context);
               },
             ),
+            FutureBuilder<bool>(
+              future: isAdmin(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const ListTile(
+                    title: Text('Loading...'),
+                  );
+                }
+                if (snapshot.hasData && snapshot.data!) {
+                  return ListTile(
+                    title: const Text('Laporan'),
+                    onTap: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (context) => ReportScreen()));
+                    },
+                  );
+                }
+                return Container(); // Return an empty container if the user is not an admin
+              },
+            ),
+            ListTile(
+              title: const Text('Notifikasi'),
+              onTap: () {
+                Navigator.pop(context); // Close the drawer
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => NotificationScreen(),
+                ));
+              },
+            ),
           ],
         ),
       ),
-      body: StreamBuilder(
-        stream: FirebaseFirestore.instance
+      body: PostList(searchQuery: _searchQuery),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.of(context)
+              .push(MaterialPageRoute(builder: (context) => AddPostScreen()));
+        },
+        child: const Icon(Icons.add),
+        backgroundColor: Theme.of(context).colorScheme.secondary,
+      ),
+    );
+  }
+}
+
+class PostList extends StatelessWidget {
+  final String searchQuery;
+
+  const PostList({Key? key, required this.searchQuery}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder(
+      stream: FirebaseFirestore.instance
           .collection('posts')
           .where('status', isEqualTo: 'approved')
           .orderBy('timestamp', descending: true)
           .snapshots(),
-        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
 
-          if (snapshot.hasError) {
-            print("Error: ${snapshot.error}");
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+        if (snapshot.hasError) {
+          print("Error: ${snapshot.error}");
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
 
-          if (!snapshot.hasData) {
-            print("No Data Available");
-            return const Center(child: CircularProgressIndicator());
-          }
+        if (!snapshot.hasData) {
+          print("No Data Available");
+          return Center(child: CircularProgressIndicator());
+        }
 
-          if (snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('Postingan Masih Kosong'));
-          }
+        // Handle notifications for new posts
+        if (snapshot.connectionState == ConnectionState.active) {
+          sendNotification('Ada postingan baru!');
+        }
 
-          return ListView(
-            children: snapshot.data!.docs.map((document) {
-              List<String> imageUrls = List<String>.from(document['imageUrls']);
-              String firstImageUrl = imageUrls.isNotEmpty ? imageUrls[0] : '';
+        if (snapshot.data!.docs.isEmpty) {
+          return Center(child: Text('Postingan Masih Kosong'));
+        }
 
-              return Card(
+        return ListView(
+          children: snapshot.data!.docs.map((document) {
+            List<String> imageUrls = List<String>.from(document['imageUrls']);
+            String firstImageUrl = imageUrls.isNotEmpty ? imageUrls[0] : '';
+
+            return GestureDetector(
+              onTap: () {
+                var batik = Batik(
+                  name: document['name'],
+                  imageAsset: firstImageUrl,
+                  location: document['location'],
+                  built: document['date']
+                      .toDate()
+                      .toLocal()
+                      .toString()
+                      .split(' ')[0],
+                  type: document['type'],
+                  description: document['description'],
+                  imageUrls: imageUrls,
+                );
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => DetailScreen(batik: batik),
+                ));
+              },
+              child: Card(
                 margin: const EdgeInsets.all(10),
                 child: Stack(
                   children: [
@@ -193,35 +264,21 @@ class Batik {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Tanggal: ${document['date'].toDate().toLocal().toString().split(' ')[0]}'),
+                          Text(
+                              'Tanggal: ${document['date'].toDate().toLocal().toString().split(' ')[0]}'),
                           Text('Lokasi: ${document['location']}'),
                           Text('Jenis: ${document['type']}'),
                           Text('Deskripsi: ${document['description']}'),
                           firstImageUrl.isNotEmpty
-                            ? Image.network(
-                                firstImageUrl,
-                                height: 150,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              )
-                            : Container(),
+                              ? Image.network(
+                                  firstImageUrl,
+                                  height: 150,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                )
+                              : Container(),
                         ],
                       ),
-                      onTap: () {
-                        Navigator.of(context).push(MaterialPageRoute(
-                          builder: (context) => DetailScreen(
-                            batik: Batik(
-                              name: document['name'],
-                              imageAsset: firstImageUrl,
-                              location: document['location'],
-                              built: document['date'].toDate().toLocal().toString().split(' ')[0],
-                              type: document['type'],
-                              description: document['description'],
-                              imageUrls: imageUrls,
-                            ),
-                          ),
-                        ));
-                      },
                     ),
                     Positioned(
                       bottom: 8,
@@ -235,279 +292,15 @@ class Batik {
                     ),
                   ],
                 ),
-              );
-            }).toList(),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context)
-              .push(MaterialPageRoute(builder: (context) => AddPostScreen()));
-        },
-        child: const Icon(Icons.add),
-        backgroundColor: Theme.of(context).colorScheme.secondary,
-      ),
+              ),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 }
 
-class DetailScreen extends StatefulWidget {
-  final Batik batik;
+void deletePost(QueryDocumentSnapshot<Object?> document) {}
 
-  const DetailScreen({Key? key, required this.batik}) : super(key: key);
-
-  @override
-  _DetailScreenState createState() => _DetailScreenState();
-}
-
-class _DetailScreenState extends State<DetailScreen> {
-  bool isSignedIn = false;
-  final TextEditingController _commentController = TextEditingController();
-  late String? userProfileImage;
-  late String userEmail;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkSignInStatus();
-  }
-
-  Future<void> _checkSignInStatus() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool signedIn = prefs.getBool('isSignedIn') ?? false;
-    var user = auth.FirebaseAuth.instance.currentUser;
-    
-    if (user != null) {
-      var userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      setState(() {
-        isSignedIn = signedIn;
-        userProfileImage = userDoc.data()?['profileImage'];
-        userEmail = user.email!;
-      });
-    }
-  }
-
-Future<void> _postComment(String name, String comment) async {
-  var user = auth.FirebaseAuth.instance.currentUser;
-  if (user != null && comment.isNotEmpty) {
-    var userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-    var userName = userDoc.data()?['name'] ?? user.email;
-
-    await FirebaseFirestore.instance.collection('comments').add({
-      'name': name, // Menggunakan field 'name' atau 'postId' yang sesuai
-      'comment': comment,
-      'userName': userName,
-      'userEmail': user.email,
-      'profileImage': userProfileImage,
-      'timestamp': Timestamp.now(),
-    });
-
-    _commentController.clear();
-  }
-}
-
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.batik.name),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Stack(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: widget.batik.imageUrls.isNotEmpty
-                        ? Container(
-                            height: 300,
-                            child: PageView.builder(
-                              itemCount: widget.batik.imageUrls.length,
-                              itemBuilder: (context, index) {
-                                return Image.network(
-                                  widget.batik.imageUrls[index],
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                );
-                              },
-                            ),
-                          )
-                        : Container(
-                            height: 300,
-                            width: double.infinity,
-                            color: Colors.grey,
-                            child: const Center(child: Text('No Image')),
-                          ),
-                  ),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.batik.name,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.place,
-                        color: Colors.red,
-                      ),
-                      const SizedBox(width: 8),
-                      const SizedBox(
-                        width: 70,
-                        child: Text(
-                          'Lokasi',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      Text(' : ${widget.batik.location}')
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.calendar_month,
-                        color: Colors.blue,
-                      ),
-                      const SizedBox(width: 8),
-                      const SizedBox(
-                        width: 70,
-                        child: Text(
-                          'Dibangun',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      Text(' : ${widget.batik.built}')
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.house,
-                        color: Colors.green,
-                      ),
-                      const SizedBox(width: 8),
-                      const SizedBox(
-                        width: 70,
-                        child: Text(
-                          'Tipe',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      Text(' : ${widget.batik.type}')
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Divider(color: Colors.blue.shade200),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Deskripsi',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(widget.batik.description),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(15),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Divider(color: Colors.blue.shade100),
-                  const Text(
-                    'Komentar',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  StreamBuilder(
-  stream: FirebaseFirestore.instance
-    .collection('comments')
-    .where('name', isEqualTo: widget.batik.name) // Menggunakan field 'name' untuk query
-    .orderBy('timestamp', descending: true)
-    .snapshots(),
-  builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      if (snapshot.hasError) {
-                        print("Error: ${snapshot.error}");
-                        return Center(child: Text('Error: ${snapshot.error}'));
-                      }
-
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return const Center(child: Text('Belum ada komentar'));
-                      }
-
-                      return ListView(
-                        shrinkWrap: true,
-                        children: snapshot.data!.docs.map((document) {
-                          String profileImage = document['profileImage'] ?? '';
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundImage: profileImage.isNotEmpty
-                                ? NetworkImage(profileImage)
-                                : null,
-                              child: profileImage.isEmpty
-                                ? const Icon(Icons.person)
-                                : null,
-                            ),
-                            title: Text(document['comment']),
-                            subtitle: Text('By: ${document['userName']}'),
-                          );
-                        }).toList(),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  isSignedIn
-                      ? Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _commentController,
-                                decoration: const InputDecoration(
-                                  hintText: 'Add a comment...',
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.send),
-                              onPressed: () {
-                                _postComment(widget.batik.name, _commentController.text);
-                              },
-                            ),
-                          ],
-                        )
-                      : const Center(
-                          child: Text(
-                            'Sign in to post comments',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+void sendNotification(String s) {}

@@ -1,9 +1,11 @@
+import 'package:batik_nasional/locationpicker.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class AddPostScreen extends StatefulWidget {
   @override
@@ -15,6 +17,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
   String _name = '';
   DateTime? _date;
   String _location = '';
+  LatLng? _pickedLocation;
   String _type = 'Modern';
   String _description = '';
   List<File> _images = [];
@@ -182,6 +185,21 @@ class _AddPostScreenState extends State<AddPostScreen> {
     });
   }
 
+  Future<void> _pickLocation() async {
+    final selectedLocation = await Navigator.of(context).push<LatLng>(
+      MaterialPageRoute(
+        builder: (ctx) => LocationPickerScreen(),
+      ),
+    );
+
+    if (selectedLocation != null) {
+      setState(() {
+        _pickedLocation = selectedLocation;
+        _location = '${selectedLocation.latitude}, ${selectedLocation.longitude}';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -275,18 +293,24 @@ class _AddPostScreenState extends State<AddPostScreen> {
                         ? ''
                         : _date!.toLocal().toString().split(' ')[0]),
               ),
-              TextFormField(
-                decoration: InputDecoration(labelText: 'Lokasi'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Lokasi Tidak Boleh Kosong';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  _location = value!;
-                },
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: _pickLocation,
+                    child: Text('Pilih Lokasi'),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      _pickedLocation == null
+                          ? 'Tidak ada lokasi yang dipilih'
+                          : 'Lokasi: ${_pickedLocation!.latitude}, ${_pickedLocation!.longitude}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 16),
               DropdownButtonFormField(
                 decoration: InputDecoration(labelText: 'Jenis Batik'),
                 value: _type,

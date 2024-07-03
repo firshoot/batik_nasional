@@ -20,8 +20,7 @@ class _ReportScreenState extends State<ReportScreen> {
         .snapshots();
   }
 
-  Future<void> _handleReport(
-      String reportId, bool deleteComment, String reporterEmail) async {
+  Future<void> _handleReport(String reportId, bool deleteComment) async {
     // Tindakan admin berdasarkan laporan
     if (deleteComment) {
       // Ambil ID komentar yang dilaporkan dari laporan
@@ -34,7 +33,7 @@ class _ReportScreenState extends State<ReportScreen> {
             .doc(commentId)
             .delete();
 
-        // Notifikasi kepada pengguna yang mengirim laporan
+        // Notifikasi kepada admin bahwa komentar telah dihapus
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Komentar telah dihapus.'),
@@ -57,6 +56,14 @@ class _ReportScreenState extends State<ReportScreen> {
         .collection('reports')
         .doc(reportId)
         .delete();
+
+    // Notifikasi kepada admin bahwa laporan telah dihapus
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Laporan telah dihapus.'),
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   Future<String?> _getCommentIdFromReport(String reportId) async {
@@ -106,11 +113,8 @@ class _ReportScreenState extends State<ReportScreen> {
                     IconButton(
                       icon: Icon(Icons.delete),
                       onPressed: () {
-                        _handleReport(
-                            document.id,
-                            true,
-                            document[
-                                'reporterEmail']); // Hapus komentar yang dilaporkan
+                        _handleReport(document.id,
+                            true); // Hapus komentar yang dilaporkan
                       },
                     ),
                     IconButton(

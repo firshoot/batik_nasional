@@ -1,3 +1,4 @@
+import 'package:batik_nasional/admin_sign_up.dart';
 import 'package:batik_nasional/notifications_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
@@ -118,6 +119,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     onTap: () {
                       Navigator.of(context).push(MaterialPageRoute(
                           builder: (context) => AdminPostReviewScreen()));
+                    },
+                  );
+                }
+                return Container(); // Return an empty container if the user is not an admin
+              },
+            ),
+            FutureBuilder<bool>(
+              future: isAdmin(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const ListTile(
+                    title: Text('Loading...'),
+                  );
+                }
+                if (snapshot.hasData && snapshot.data!) {
+                  return ListTile(
+                    title: const Text('Admin Sign Up'),
+                    onTap: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (context) => AdminSignUpScreen()));
                     },
                   );
                 }

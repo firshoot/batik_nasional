@@ -8,6 +8,7 @@ class Batik {
   final String type;
   final String description;
   final List<String> imageUrls;
+  String? locationLink;
 
   Batik({
     required this.name,
@@ -17,5 +18,6 @@ class Batik {
     required this.type,
     required this.description,
     required this.imageUrls,
+    this.locationLink,
   });
 }

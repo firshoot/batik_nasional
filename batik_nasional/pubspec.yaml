@@ -44,6 +44,8 @@ dependencies:
   cached_network_image: ^3.3.1
   multi_image_picker: ^4.8.01
   carousel_slider: ^4.2.1
+  url_launcher: ^6.3.0
+  google_maps_flutter: ^2.7.0
 
 dev_dependencies:
   flutter_test:

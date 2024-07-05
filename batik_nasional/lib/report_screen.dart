@@ -20,33 +20,50 @@ class _ReportScreenState extends State<ReportScreen> {
         .snapshots();
   }
 
-  Future<void> _handleReport(String reportId, bool deleteComment) async {
+  Future<void> _handleReport(String reportId, bool deletePost) async {
     try {
-      if (deleteComment) {
-        String? commentId = await _getCommentIdFromReport(reportId);
+      if (deletePost) {
+        // Mendapatkan postId dari laporan
+        String? postId = await _getPostIdFromReport(reportId);
+        print('postId obtained: $postId'); // Debug log
 
-        if (commentId != null) {
-          await FirebaseFirestore.instance
-              .collection('comments')
-              .doc(commentId)
-              .delete();
+        if (postId != null && postId.isNotEmpty) {
+          DocumentSnapshot postDoc = await FirebaseFirestore.instance
+              .collection('posts')
+              .doc(postId)
+              .get();
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Komentar telah dihapus.'),
-              duration: Duration(seconds: 3),
-            ),
-          );
+          if (postDoc.exists) {
+            await FirebaseFirestore.instance
+                .collection('posts')
+                .doc(postId)
+                .delete();
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Post telah dihapus.'),
+                duration: Duration(seconds: 3),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Post tidak ditemukan atau tidak valid.'),
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Komentar tidak ditemukan.'),
+              content: Text('Post tidak ditemukan atau tidak valid.'),
               duration: Duration(seconds: 3),
             ),
           );
         }
       }
 
+      // Menghapus laporan setelah menghapus postingan (jika ada)
       await FirebaseFirestore.instance
           .collection('reports')
           .doc(reportId)
@@ -68,15 +85,18 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
-  Future<String?> _getCommentIdFromReport(String reportId) async {
+  Future<String?> _getPostIdFromReport(String reportId) async {
     try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('comments')
-          .where('reportId', isEqualTo: reportId)
+      DocumentSnapshot reportDoc = await FirebaseFirestore.instance
+          .collection('reports')
+          .doc(reportId)
           .get();
 
-      if (querySnapshot.docs.isNotEmpty) {
-        return querySnapshot.docs.first.id;
+      if (reportDoc.exists) {
+        var data = reportDoc.data() as Map<String, dynamic>;
+        return data['postId'];
+      } else {
+        print('Laporan tidak ditemukan untuk ID: $reportId');
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -85,6 +105,7 @@ class _ReportScreenState extends State<ReportScreen> {
           duration: Duration(seconds: 3),
         ),
       );
+      print('Error mendapatkan postId: $e');
     }
 
     return null;
@@ -119,8 +140,20 @@ class _ReportScreenState extends State<ReportScreen> {
               var document = reports[index];
               var data = document.data() as Map<String, dynamic>;
 
-              if (!data.containsKey('comment') ||
-                  !data.containsKey('reporterEmail')) {
+              // Debug log untuk melihat data yang diterima
+              print('Data received: $data');
+
+              // Menangani field postContent atau comment
+              String displayContent;
+              if (data.containsKey('postContent')) {
+                displayContent = data['postContent'];
+              } else if (data.containsKey('comment')) {
+                displayContent = data['comment'];
+              } else {
+                displayContent = 'Field yang diperlukan tidak tersedia.';
+              }
+
+              if (!data.containsKey('reporterEmail')) {
                 return ListTile(
                   title: Text('Dokumen tidak valid'),
                   subtitle: Text('Field yang diperlukan tidak tersedia.'),
@@ -131,7 +164,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ListTile(
-                    title: Text(data['comment']),
+                    title: Text(displayContent),
                     subtitle: Text('Dilaporkan oleh: ${data['reporterEmail']}'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,

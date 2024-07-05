@@ -108,12 +108,11 @@ class _DetailScreenState extends State<DetailScreen> {
     Navigator.of(context).pop();
   }
 
-  Future<void> _reportPost(String postId, String postContent,
-      String reporterEmail, String reason) async {
+  Future<void> _reportPost(String postId, String postContent, String reporterEmail, String reason) async {
     await FirebaseFirestore.instance.collection('reports').add({
       'postId': postId,
-      'postContent': postContent,
-      'reporterEmail': reporterEmail,
+      'postContent': postContent, // Tambahkan field ini
+      'reporterEmail': reporterEmail, // Tambahkan field ini
       'reason': reason,
       'timestamp': Timestamp.now(),
     });

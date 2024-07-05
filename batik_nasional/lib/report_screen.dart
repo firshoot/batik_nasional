@@ -21,61 +21,70 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Future<void> _handleReport(String reportId, bool deleteComment) async {
-    // Tindakan admin berdasarkan laporan
-    if (deleteComment) {
-      // Ambil ID komentar yang dilaporkan dari laporan
-      String? commentId = await _getCommentIdFromReport(reportId);
+    try {
+      if (deleteComment) {
+        String? commentId = await _getCommentIdFromReport(reportId);
 
-      if (commentId != null) {
-        // Hapus komentar yang dilaporkan
-        await FirebaseFirestore.instance
-            .collection('comments')
-            .doc(commentId)
-            .delete();
+        if (commentId != null) {
+          await FirebaseFirestore.instance
+              .collection('comments')
+              .doc(commentId)
+              .delete();
 
-        // Notifikasi kepada admin bahwa komentar telah dihapus
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Komentar telah dihapus.'),
-            duration: Duration(seconds: 3),
-          ),
-        );
-      } else {
-        // Jika komentar tidak ditemukan
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Komentar tidak ditemukan.'),
-            duration: Duration(seconds: 3),
-          ),
-        );
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Komentar telah dihapus.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Komentar tidak ditemukan.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
       }
+
+      await FirebaseFirestore.instance
+          .collection('reports')
+          .doc(reportId)
+          .delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Laporan telah dihapus.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
-
-    // Hapus laporan dari koleksi 'reports'
-    await FirebaseFirestore.instance
-        .collection('reports')
-        .doc(reportId)
-        .delete();
-
-    // Notifikasi kepada admin bahwa laporan telah dihapus
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Laporan telah dihapus.'),
-        duration: Duration(seconds: 3),
-      ),
-    );
   }
 
   Future<String?> _getCommentIdFromReport(String reportId) async {
-    // Query untuk mencari komentar berdasarkan ID laporan
-    QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-        .collection('comments')
-        .where('reportId', isEqualTo: reportId)
-        .get();
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('comments')
+          .where('reportId', isEqualTo: reportId)
+          .get();
 
-    // Ambil ID komentar pertama yang ditemukan
-    if (querySnapshot.docs.isNotEmpty) {
-      return querySnapshot.docs.first.id;
+      if (querySnapshot.docs.isNotEmpty) {
+        return querySnapshot.docs.first.id;
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
 
     return null;
@@ -87,9 +96,9 @@ class _ReportScreenState extends State<ReportScreen> {
       appBar: AppBar(
         title: Text('Laporan dari Pengguna'),
       ),
-      body: StreamBuilder(
+      body: StreamBuilder<QuerySnapshot>(
         stream: _reportsStream,
-        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+        builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
           }
@@ -102,15 +111,28 @@ class _ReportScreenState extends State<ReportScreen> {
             return Center(child: Text('Tidak ada laporan yang tersedia.'));
           }
 
-          return ListView(
-            children: snapshot.data!.docs.map((document) {
+          var reports = snapshot.data!.docs;
+
+          return ListView.builder(
+            itemCount: reports.length,
+            itemBuilder: (context, index) {
+              var document = reports[index];
+              var data = document.data() as Map<String, dynamic>;
+
+              if (!data.containsKey('comment') ||
+                  !data.containsKey('reporterEmail')) {
+                return ListTile(
+                  title: Text('Dokumen tidak valid'),
+                  subtitle: Text('Field yang diperlukan tidak tersedia.'),
+                );
+              }
+
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ListTile(
-                    title: Text(document['comment']),
-                    subtitle:
-                        Text('Dilaporkan oleh: ${document['reporterEmail']}'),
+                    title: Text(data['comment']),
+                    subtitle: Text('Dilaporkan oleh: ${data['reporterEmail']}'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -132,9 +154,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                   ),
                                   TextButton(
                                     onPressed: () {
-                                      _handleReport(
-                                          document.id,
-                                          true); // Hapus komentar yang dilaporkan
+                                      _handleReport(document.id, true);
                                       Navigator.of(context).pop();
                                     },
                                     child: Text('Ya'),
@@ -147,11 +167,10 @@ class _ReportScreenState extends State<ReportScreen> {
                         IconButton(
                           icon: Icon(Icons.email),
                           onPressed: () {
-                            // Tambahkan logika untuk mengirim email atau menghubungi pengguna terkait
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                    'Menghubungi ${document['reporterEmail']}'),
+                                    'Menghubungi ${data['reporterEmail']}'),
                                 duration: Duration(seconds: 3),
                               ),
                             );
@@ -163,7 +182,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   Divider(),
                 ],
               );
-            }).toList(),
+            },
           );
         },
       ),

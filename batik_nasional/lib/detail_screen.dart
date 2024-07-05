@@ -16,10 +16,10 @@ class DetailScreen extends StatefulWidget {
 class _DetailScreenState extends State<DetailScreen> {
   bool isSignedIn = false;
   bool isAdmin = false;
-  bool isUploader = false; // Tambahkan variabel ini
+  bool isUploader = false;
   final TextEditingController _commentController = TextEditingController();
   late String? userProfileImage;
-  late String userEmail = ''; // Inisialisasi userEmail dengan nilai awal
+  late String userEmail = '';
 
   @override
   void initState() {
@@ -37,12 +37,22 @@ class _DetailScreenState extends State<DetailScreen> {
           .collection('users')
           .doc(user.uid)
           .get();
+
       setState(() {
         isSignedIn = signedIn;
         userProfileImage = userDoc.data()?['profileImage'];
-        userEmail = user.email ?? ''; // Pastikan userEmail diinisialisasi
-        isAdmin = userDoc.data()?['role'] == 'admin';
-        isUploader = user.uid == widget.batik.userId; // Periksa apakah pengguna adalah pengupload
+        userEmail = user.email ?? '';
+        isUploader = user.uid == widget.batik.userId;
+
+        print("Current User ID: ${user.uid}");
+        print("Uploader User ID: ${widget.batik.userId}");
+        print("Is Uploader: $isUploader");
+      });
+    } else {
+      setState(() {
+        isSignedIn = false;
+        isUploader = false;
+        print("User not signed in");
       });
     }
   }
@@ -57,7 +67,7 @@ class _DetailScreenState extends State<DetailScreen> {
       var userName = userDoc.data()?['name'] ?? user.email;
 
       await FirebaseFirestore.instance.collection('comments').add({
-        'name': name, // Menggunakan field 'name' atau 'postId' yang sesuai
+        'name': name,
         'comment': comment,
         'userName': userName,
         'userEmail': user.email,
@@ -85,8 +95,6 @@ class _DetailScreenState extends State<DetailScreen> {
       'reason': reason,
       'timestamp': Timestamp.now(),
     });
-    // Tambahkan logika untuk memberi notifikasi ke admin atau tindakan lain yang sesuai
-    // Contoh: Menampilkan pesan bahwa komentar telah dilaporkan
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Komentar telah dilaporkan.'),
@@ -95,18 +103,26 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  Future<void> _deletePost() async {
-    // Hapus postingan dari Firestore
-    await FirebaseFirestore.instance
-        .collection('posts')
-        .doc(widget.batik.id)
-        .delete();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Postingan telah dihapus')),
-    );
-
+  void _deletePost() async {
+    await FirebaseFirestore.instance.collection('posts').doc(widget.batik.id).delete();
     Navigator.of(context).pop();
+  }
+
+  Future<void> _reportPost(String postId, String postContent,
+      String reporterEmail, String reason) async {
+    await FirebaseFirestore.instance.collection('reports').add({
+      'postId': postId,
+      'postContent': postContent,
+      'reporterEmail': reporterEmail,
+      'reason': reason,
+      'timestamp': Timestamp.now(),
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Post telah dilaporkan.'),
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -115,10 +131,10 @@ class _DetailScreenState extends State<DetailScreen> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(
-          widget.batik.name ?? '', // Pastikan widget.batik.name tidak null
+          widget.batik.name ?? '',
         ),
         actions: [
-          if (isAdmin || isUploader) // Tampilkan tombol hapus hanya untuk admin atau pengupload
+          if (isUploader) // Show delete button only for the uploader
             IconButton(
               icon: Icon(Icons.delete),
               onPressed: () {
@@ -138,6 +154,47 @@ class _DetailScreenState extends State<DetailScreen> {
                           _deletePost();
                         },
                         child: Text('Hapus'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            )
+          else // Show report button for other users
+            IconButton(
+              icon: Icon(Icons.flag),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text('Laporkan Postingan'),
+                    content: TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Alasan pelaporan...',
+                      ),
+                      minLines: 3,
+                      maxLines: 5,
+                      onChanged: (value) {
+                        // Tambahan untuk menyimpan alasan pelaporan
+                      },
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: Text('Batal'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          // Kirim laporan
+                          _reportPost(
+                            widget.batik.id ?? '',
+                            widget.batik.description ?? '',
+                            userEmail,
+                            '', // Ganti dengan state untuk alasan pelaporan
+                          );
+                          Navigator.of(ctx).pop();
+                        },
+                        child: Text('Laporkan'),
                       ),
                     ],
                   ),
@@ -264,15 +321,16 @@ class _DetailScreenState extends State<DetailScreen> {
                         .snapshots(),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
-                        return const Center(child: CircularProgressIndicator());
+                        return const Center(
+                            child: CircularProgressIndicator());
                       }
-                      return Column(
-                        children: snapshot.data!.docs.map((document) {
-                          String profileImage = document['profileImage'] ?? '';
-                          bool isCommentOwner =
-                              document['userEmail'] == userEmail;
-                          bool canDelete = isAdmin || isCommentOwner;
+                      var comments = snapshot.data!.docs;
 
+                      return ListView(
+                        shrinkWrap: true,
+                        children: comments.map((document) {
+                          bool canDelete = document['userEmail'] == userEmail;
+                          var profileImage = document['profileImage'] ?? '';
                           return ListTile(
                             leading: CircleAvatar(
                               backgroundImage: profileImage.isNotEmpty
@@ -290,7 +348,6 @@ class _DetailScreenState extends State<DetailScreen> {
                                 IconButton(
                                   icon: const Icon(Icons.flag),
                                   onPressed: () {
-                                    // Tampilkan dialog laporkan komentar
                                     showDialog(
                                       context: context,
                                       builder: (context) => AlertDialog(
@@ -364,18 +421,12 @@ class _DetailScreenState extends State<DetailScreen> {
                               },
                             ),
                           ],
-                        )
-                      : const Center(
-                          child: Text(
-                            'Sign in to post comments',
-                            style: TextStyle(color: Colors.red),
-                          ),
+                        ): 
+                        const Center(
                         ),
                   const SizedBox(height: 8),
-                  // Tombol "Tambah Komentar"
                   ElevatedButton(
                     onPressed: () {
-                      // Tambahkan logika untuk menampilkan dialog atau action sheet
                       showDialog(
                         context: context,
                         builder: (context) => AlertDialog(
@@ -389,7 +440,7 @@ class _DetailScreenState extends State<DetailScreen> {
                           actions: [
                             TextButton(
                               onPressed: () {
-                                Navigator.of(context).pop(); // Tutup dialog
+                                Navigator.of(context).pop();
                               },
                               child: const Text('Batal'),
                             ),
@@ -399,7 +450,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                   widget.batik.name ?? '',
                                   _commentController.text,
                                 );
-                                Navigator.of(context).pop(); // Tutup dialog
+                                Navigator.of(context).pop();
                               },
                               child: const Text('Tambah'),
                             ),

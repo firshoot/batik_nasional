@@ -104,34 +104,64 @@ class _ReportScreenState extends State<ReportScreen> {
 
           return ListView(
             children: snapshot.data!.docs.map((document) {
-              return ListTile(
-                title: Text(document['comment']),
-                subtitle: Text('Dilaporkan oleh: ${document['reporterEmail']}'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.delete),
-                      onPressed: () {
-                        _handleReport(document.id,
-                            true); // Hapus komentar yang dilaporkan
-                      },
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ListTile(
+                    title: Text(document['comment']),
+                    subtitle:
+                        Text('Dilaporkan oleh: ${document['reporterEmail']}'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.delete),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text('Hapus?'),
+                                content: Text(
+                                    'Apakah Anda yakin ingin menghapus postingan ini?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: Text('Tidak'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      _handleReport(
+                                          document.id,
+                                          true); // Hapus komentar yang dilaporkan
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: Text('Ya'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.email),
+                          onPressed: () {
+                            // Tambahkan logika untuk mengirim email atau menghubungi pengguna terkait
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    'Menghubungi ${document['reporterEmail']}'),
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: Icon(Icons.email),
-                      onPressed: () {
-                        // Tambahkan logika untuk mengirim email atau menghubungi pengguna terkait
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                                'Menghubungi ${document['reporterEmail']}'),
-                            duration: Duration(seconds: 3),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                  ),
+                  Divider(),
+                ],
               );
             }).toList(),
           );

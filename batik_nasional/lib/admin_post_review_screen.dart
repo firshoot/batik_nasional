@@ -49,16 +49,17 @@ class AdminPostReviewScreen extends StatelessWidget {
                           FirebaseFirestore.instance.runTransaction((Transaction transaction) async {
                             DocumentSnapshot freshSnap = await transaction.get(document.reference);
                             transaction.update(freshSnap.reference, {'status': 'approved'});
+                            print("Post approved: ${document.id}");
                           });
                         },
                       ),
-
                       IconButton(
                         icon: const Icon(Icons.close, color: Colors.red),
                         onPressed: () {
                           FirebaseFirestore.instance.runTransaction((Transaction transaction) async {
                             DocumentSnapshot freshSnap = await transaction.get(document.reference);
                             transaction.update(freshSnap.reference, {'status': 'rejected'});
+                            print("Post rejected: ${document.id}");
                           });
                         },
                       ),

@@ -18,6 +18,7 @@ class _DetailScreenState extends State<DetailScreen> {
   bool isAdmin = false;
   bool isUploader = false;
   final TextEditingController _commentController = TextEditingController();
+  final TextEditingController _reportReasonController = TextEditingController();
   late String? userProfileImage;
   late String userEmail = '';
 
@@ -108,100 +109,102 @@ class _DetailScreenState extends State<DetailScreen> {
     Navigator.of(context).pop();
   }
 
-  Future<void> _reportPost(String postId, String postContent, String reporterEmail, String reason) async {
-    await FirebaseFirestore.instance.collection('reports').add({
-      'postId': postId,
-      'postContent': postContent, // Tambahkan field ini
-      'reporterEmail': reporterEmail, // Tambahkan field ini
-      'reason': reason,
-      'timestamp': Timestamp.now(),
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Post telah dilaporkan.'),
-        duration: Duration(seconds: 3),
-      ),
-    );
-  }
+void _reportPost(String postId, String postContent, String reporterEmail, String reason) async {
+  print("Reporting Post ID: $postId"); // Tambahkan log untuk postId
+  print("Reporting Post Content: $postContent"); // Tambahkan log untuk postContent
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(
-          widget.batik.name ?? '',
-        ),
-        actions: [
-          if (isUploader) // Show delete button only for the uploader
-            IconButton(
-              icon: Icon(Icons.delete),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: Text('Konfirmasi'),
-                    content: Text('Apakah Anda yakin ingin menghapus postingan ini?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(),
-                        child: Text('Batal'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(ctx).pop();
-                          _deletePost();
-                        },
-                        child: Text('Hapus'),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            )
-          else // Show report button for other users
-            IconButton(
-              icon: Icon(Icons.flag),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: Text('Laporkan Postingan'),
-                    content: TextField(
-                      decoration: const InputDecoration(
-                        hintText: 'Alasan pelaporan...',
-                      ),
-                      minLines: 3,
-                      maxLines: 5,
-                      onChanged: (value) {
-                        // Tambahan untuk menyimpan alasan pelaporan
-                      },
+  await FirebaseFirestore.instance.collection('reports').add({
+    'postId': postId, // Menggunakan parameter yang diterima
+    'postContent': postContent, // Menggunakan parameter yang diterima
+    'reporterEmail': reporterEmail,
+    'reason': reason, // Alasan pelaporan
+    'timestamp': Timestamp.now(),
+  });
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('Post telah dilaporkan.'),
+      duration: Duration(seconds: 3),
+    ),
+  );
+}
+
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      title: Text(widget.batik.name ?? ''),
+      actions: [
+        if (isUploader)
+          IconButton(
+            icon: Icon(Icons.delete),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: Text('Konfirmasi'),
+                  content: Text('Apakah Anda yakin ingin menghapus postingan ini?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: Text('Batal'),
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(),
-                        child: Text('Batal'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          // Kirim laporan
-                          _reportPost(
-                            widget.batik.id ?? '',
-                            widget.batik.description ?? '',
-                            userEmail,
-                            '', // Ganti dengan state untuk alasan pelaporan
-                          );
-                          Navigator.of(ctx).pop();
-                        },
-                        child: Text('Laporkan'),
-                      ),
-                    ],
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        _deletePost();
+                      },
+                      child: Text('Hapus'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          )
+        else
+          IconButton(
+            icon: Icon(Icons.flag),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: Text('Laporkan Postingan'),
+                  content: TextField(
+                    controller: _reportReasonController,
+                    decoration: const InputDecoration(
+                      hintText: 'Alasan pelaporan...',
+                    ),
+                    minLines: 3,
+                    maxLines: 5,
                   ),
-                );
-              },
-            ),
-        ],
-      ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: Text('Batal'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        // Mengambil alasan pelaporan dari controller
+                        String reason = _reportReasonController.text.trim();
+                        print("Post ID before reporting: ${widget.batik.id}"); // Log untuk postId sebelum memanggil _reportPost
+                        _reportPost(
+                          widget.batik.id ?? 'Unknown', // Pastikan nilai default jika null
+                          widget.batik.name ?? 'No Name',
+                          userEmail,
+                          reason, // Menggunakan alasan pelaporan
+                        );
+                        Navigator.of(context).pop();
+                      },
+                      child: Text('Laporkan'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+      ],
+    ),
       body: SingleChildScrollView(
         child: Column(
           children: [

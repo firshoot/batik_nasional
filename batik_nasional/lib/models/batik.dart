@@ -10,7 +10,7 @@ class Batik {
   final String? type;
   final String? description;
   final List<String>? imageUrls;
-  final String? userId; // Tambahkan properti ini
+  final String? userId;
 
   Batik({
     this.id,
@@ -21,12 +21,12 @@ class Batik {
     this.type,
     this.description,
     this.imageUrls,
-    this.userId, // Tambahkan properti ini ke konstruktor
+    this.userId,
   });
 
-  // Metode untuk mengonversi dari Map ke Batik
   factory Batik.fromFirestore(DocumentSnapshot doc) {
     Map data = doc.data() as Map;
+    print("Document data: $data");
     return Batik(
       id: doc.id,
       name: data['name'] ?? '',
@@ -35,7 +35,7 @@ class Batik {
       type: data['type'] ?? '',
       description: data['description'] ?? '',
       imageUrls: List<String>.from(data['imageUrls'] ?? []),
-      userId: data['userId'] ?? '', // Inisialisasi properti ini
+      userId: data['userId'] ?? '',
     );
   }
 }

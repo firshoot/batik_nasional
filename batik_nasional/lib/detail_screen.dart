@@ -26,6 +26,7 @@ class _DetailScreenState extends State<DetailScreen> {
   void initState() {
     super.initState();
     _checkSignInStatus();
+    print("Batik ID in initState: ${widget.batik.id}");
   }
 
   Future<void> _checkSignInStatus() async {
@@ -57,6 +58,7 @@ class _DetailScreenState extends State<DetailScreen> {
       });
     }
   }
+  
 
   Future<void> _postComment(String name, String comment) async {
     var user = auth.FirebaseAuth.instance.currentUser;
@@ -80,6 +82,8 @@ class _DetailScreenState extends State<DetailScreen> {
     }
   }
 
+  
+
   Future<void> _deleteComment(String commentId) async {
     await FirebaseFirestore.instance
         .collection('comments')
@@ -87,124 +91,136 @@ class _DetailScreenState extends State<DetailScreen> {
         .delete();
   }
 
-  Future<void> _reportComment(String commentId, String comment,
-      String reporterEmail, String reason) async {
+Future<void> _reportComment(String commentId, String reason) async {
+  var user = auth.FirebaseAuth.instance.currentUser;
+  if (user != null && reason.isNotEmpty) {
     await FirebaseFirestore.instance.collection('reports').add({
+      'type': 'comment',
       'commentId': commentId,
-      'comment': comment,
-      'reporterEmail': reporterEmail,
       'reason': reason,
+      'reporterEmail': user.email,
       'timestamp': Timestamp.now(),
+      'postName': widget.batik.name,
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Komentar telah dilaporkan.'),
-        duration: Duration(seconds: 3),
+
+    _reportReasonController.clear();
+  }
+}
+
+  Future<void> _reportPost(String reason) async {
+    var user = auth.FirebaseAuth.instance.currentUser;
+    if (user != null && reason.isNotEmpty) {
+      print("Reporting Post ID: ${widget.batik.id}");
+      await FirebaseFirestore.instance.collection('reports').add({
+        'type': 'post',
+        'postId': widget.batik.id,
+        'postName': widget.batik.name,
+        'reason': reason,
+        'reporterEmail': user.email,
+        'timestamp': Timestamp.now(),
+      });
+
+      _reportReasonController.clear();
+    }
+  }
+
+  void _showReportDialog(String commentId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Report Komentar'),
+        content: TextField(
+          controller: _reportReasonController,
+          decoration: const InputDecoration(
+            hintText: 'Masukkan alasan report',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _reportComment(commentId, _reportReasonController.text);
+              Navigator.of(context).pop();
+            },
+            child: const Text('Laporkan'),
+          ),
+        ],
       ),
     );
   }
 
-  void _deletePost() async {
-    await FirebaseFirestore.instance.collection('posts').doc(widget.batik.id).delete();
-    Navigator.of(context).pop();
-  }
-
-void _reportPost(String postId, String postContent, String reporterEmail, String reason) async {
-  print("Reporting Post ID: $postId"); // Tambahkan log untuk postId
-  print("Reporting Post Content: $postContent"); // Tambahkan log untuk postContent
-
-  await FirebaseFirestore.instance.collection('reports').add({
-    'postId': postId, // Menggunakan parameter yang diterima
-    'postContent': postContent, // Menggunakan parameter yang diterima
-    'reporterEmail': reporterEmail,
-    'reason': reason, // Alasan pelaporan
-    'timestamp': Timestamp.now(),
-  });
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('Post telah dilaporkan.'),
-      duration: Duration(seconds: 3),
-    ),
-  );
-}
-
 @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      title: Text(widget.batik.name ?? ''),
-      actions: [
-        if (isUploader)
+  Widget build(BuildContext context) {
+    print("Batik ID in build: ${widget.batik.id}");
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.batik.name ?? ''),
+        actions: [
           IconButton(
-            icon: Icon(Icons.delete),
+            icon: const Icon(Icons.flag),
             onPressed: () {
               showDialog(
                 context: context,
-                builder: (ctx) => AlertDialog(
-                  title: Text('Konfirmasi'),
-                  content: Text('Apakah Anda yakin ingin menghapus postingan ini?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      child: Text('Batal'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(ctx).pop();
-                        _deletePost();
-                      },
-                      child: Text('Hapus'),
-                    ),
-                  ],
-                ),
-              );
-            },
-          )
-        else
-          IconButton(
-            icon: Icon(Icons.flag),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: Text('Laporkan Postingan'),
+                builder: (context) => AlertDialog(
+                  title: const Text('Report Post'),
                   content: TextField(
                     controller: _reportReasonController,
                     decoration: const InputDecoration(
-                      hintText: 'Alasan pelaporan...',
+                      hintText: 'Enter reason for reporting',
                     ),
-                    minLines: 3,
-                    maxLines: 5,
                   ),
                   actions: [
                     TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      child: Text('Batal'),
-                    ),
-                    TextButton(
                       onPressed: () {
-                        // Mengambil alasan pelaporan dari controller
-                        String reason = _reportReasonController.text.trim();
-                        print("Post ID before reporting: ${widget.batik.id}"); // Log untuk postId sebelum memanggil _reportPost
-                        _reportPost(
-                          widget.batik.id ?? 'Unknown', // Pastikan nilai default jika null
-                          widget.batik.name ?? 'No Name',
-                          userEmail,
-                          reason, // Menggunakan alasan pelaporan
-                        );
                         Navigator.of(context).pop();
                       },
-                      child: Text('Laporkan'),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        _reportPost(_reportReasonController.text);
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Submit'),
                     ),
                   ],
                 ),
               );
             },
           ),
-      ],
-    ),
+          if (isUploader)
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Konfirmasi'),
+                    content: const Text('Apakah Anda yakin ingin menghapus postingan ini?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: const Text('Batal'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          // Fungsi untuk menghapus postingan
+                          Navigator.of(ctx).pop();
+                        },
+                        child: const Text('Hapus'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -316,15 +332,14 @@ Widget build(BuildContext context) {
                   const SizedBox(height: 16),
                   Divider(color: Colors.blue.shade200),
                   const SizedBox(height: 8),
-                  StreamBuilder<QuerySnapshot>(
+                   StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('comments')
                         .where('name', isEqualTo: widget.batik.name)
                         .snapshots(),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
-                        return const Center(
-                            child: CircularProgressIndicator());
+                        return const Center(child: CircularProgressIndicator());
                       }
                       var comments = snapshot.data!.docs;
 
@@ -353,36 +368,26 @@ Widget build(BuildContext context) {
                                     showDialog(
                                       context: context,
                                       builder: (context) => AlertDialog(
-                                        title: const Text('Laporkan Komentar'),
+                                        title: const Text('Report Comment'),
                                         content: TextField(
+                                          controller: _reportReasonController,
                                           decoration: const InputDecoration(
-                                            hintText: 'Alasan pelaporan...',
+                                            hintText: 'Enter reason for reporting',
                                           ),
-                                          minLines: 3,
-                                          maxLines: 5,
-                                          onChanged: (value) {
-                                            // Tambahan untuk menyimpan alasan pelaporan
-                                          },
                                         ),
                                         actions: [
                                           TextButton(
                                             onPressed: () {
                                               Navigator.of(context).pop();
                                             },
-                                            child: const Text('Batal'),
+                                            child: const Text('Cancel'),
                                           ),
                                           ElevatedButton(
                                             onPressed: () {
-                                              // Kirim laporan
-                                              _reportComment(
-                                                document.id,
-                                                document['comment'],
-                                                userEmail,
-                                                '', // Ganti dengan state untuk alasan pelaporan
-                                              );
+                                              _reportComment(document.id, _reportReasonController.text);
                                               Navigator.of(context).pop();
                                             },
-                                            child: const Text('Laporkan'),
+                                            child: const Text('Submit'),
                                           ),
                                         ],
                                       ),

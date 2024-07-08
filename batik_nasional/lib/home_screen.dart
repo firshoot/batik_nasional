@@ -3,13 +3,13 @@ import 'package:batik_nasional/notifications_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:batik_nasional/models/batik.dart'; // Sesuaikan dengan struktur proyek Anda
+import 'package:batik_nasional/models/batik.dart';
 import 'package:batik_nasional/admin_post_review_screen.dart';
 import 'package:batik_nasional/profile.dart';
 import 'package:batik_nasional/add_post_screen.dart';
 import 'package:batik_nasional/sign_in_screen.dart';
-import 'package:batik_nasional/detail_screen.dart'; // Jika belum diimport
-import 'report_screen.dart'; // Import ReportScreen
+import 'package:batik_nasional/detail_screen.dart';
+import 'report_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -231,11 +231,9 @@ class PostList extends StatelessWidget {
           return Center(child: CircularProgressIndicator());
         }
 
-        // Filter posts based on the search query by name
         var filteredDocs = snapshot.data!.docs.where((doc) {
           var name = doc['name'].toString().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
           var query = searchQuery.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-
           return name.contains(query);
         }).toList();
 
@@ -251,17 +249,14 @@ class PostList extends StatelessWidget {
             return GestureDetector(
               onTap: () {
                 var batik = Batik(
+                  id: document.id,  // Menginisialisasi ID dokumen
                   name: document['name'],
-                  imageAsset: firstImageUrl,
                   location: document['location'],
-                  built: document['date']
-                      .toDate()
-                      .toLocal()
-                      .toString()
-                      .split(' ')[0],
+                  built: document['date'].toDate().toLocal().toString().split(' ')[0],
                   type: document['type'],
                   description: document['description'],
                   imageUrls: imageUrls,
+                  userId: document['userId'],  // Pastikan userId diinisialisasi
                 );
                 Navigator.of(context).push(MaterialPageRoute(
                   builder: (context) => DetailScreen(batik: batik),
@@ -276,8 +271,7 @@ class PostList extends StatelessWidget {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                              'Tanggal: ${document['date'].toDate().toLocal().toString().split(' ')[0]}'),
+                          Text('Tanggal: ${document['date'].toDate().toLocal().toString().split(' ')[0]}'),
                           Text('Lokasi: ${document['location']}'),
                           Text('Jenis: ${document['type']}'),
                           Text('Deskripsi: ${document['description']}'),
@@ -302,7 +296,3 @@ class PostList extends StatelessWidget {
     );
   }
 }
-
-void deletePost(QueryDocumentSnapshot<Object?> document) {}
-
-void sendNotification(String s) {}

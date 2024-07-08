@@ -1,4 +1,5 @@
 import 'package:batik_nasional/admin_sign_up.dart';
+import 'package:batik_nasional/itemcard.dart';
 import 'package:batik_nasional/notifications_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
@@ -241,8 +242,17 @@ class PostList extends StatelessWidget {
           return Center(child: Text('Postingan Tidak Ditemukan'));
         }
 
-        return ListView(
-          children: filteredDocs.map((document) {
+        return GridView.builder(
+          padding: const EdgeInsets.all(10),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 2 / 3,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+          ),
+          itemCount: filteredDocs.length,
+          itemBuilder: (context, index) {
+            var document = filteredDocs[index];
             List<String> imageUrls = List<String>.from(document['imageUrls']);
             String firstImageUrl = imageUrls.isNotEmpty ? imageUrls[0] : '';
 
@@ -262,35 +272,13 @@ class PostList extends StatelessWidget {
                   builder: (context) => DetailScreen(batik: batik),
                 ));
               },
-              child: Card(
-                margin: const EdgeInsets.all(10),
-                child: Stack(
-                  children: [
-                    ListTile(
-                      title: Text(document['name']),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Tanggal: ${document['date'].toDate().toLocal().toString().split(' ')[0]}'),
-                          Text('Lokasi: ${document['location']}'),
-                          Text('Jenis: ${document['type']}'),
-                          Text('Deskripsi: ${document['description']}'),
-                          firstImageUrl.isNotEmpty
-                              ? Image.network(
-                                  firstImageUrl,
-                                  height: 150,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                )
-                              : Container(),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+              child: ItemCard(
+                name: document['name'],
+                date: document['date'].toDate().toLocal().toString().split(' ')[0],
+                imageUrl: firstImageUrl,
               ),
             );
-          }).toList(),
+          },
         );
       },
     );

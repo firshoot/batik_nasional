@@ -18,6 +18,45 @@ class ReportScreen extends StatelessWidget {
         .delete();
   }
 
+  Future<void> _deleteReport(String reportId) async {
+    await FirebaseFirestore.instance
+        .collection('reports')
+        .doc(reportId)
+        .delete();
+  }
+
+  Future<void> _confirmDelete(BuildContext context, String type, String id, String reportId) async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Delete'),
+          content: Text('Are you sure you want to delete this $type?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Delete'),
+              onPressed: () async {
+                if (type == 'comment') {
+                  await _deleteComment(id);
+                } else if (type == 'post') {
+                  await _deletePost(id);
+                }
+                await _deleteReport(reportId);
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   String capitalizeFirstLetter(String input) {
     if (input.isEmpty) {
       return input;
@@ -46,12 +85,14 @@ class ReportScreen extends StatelessWidget {
               var reason = data.containsKey('reason') ? data['reason'] : 'No reason provided';
               var reporterEmail = data.containsKey('reporterEmail') ? data['reporterEmail'] : 'Unknown';
               var postName = data.containsKey('postName') ? data['postName'] : 'Unknown';
+              var id = type == 'comment' ? data['commentId'] : data['postId'];
+              var reportId = document.id;
 
               return ListTile(
                 title: Text(
                   type == 'comment'
-                      ? 'Comment ID: ${data['commentId']}'
-                      : 'Post ID: ${data['postId']}'
+                      ? 'Comment ID: $id'
+                      : 'Post ID: $id'
                 ),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,11 +106,7 @@ class ReportScreen extends StatelessWidget {
                 trailing: IconButton(
                   icon: const Icon(Icons.delete),
                   onPressed: () {
-                    if (type == 'comment') {
-                      _deleteComment(data['commentId']);
-                    } else if (type == 'post') {
-                      _deletePost(data['postId']);
-                    }
+                    _confirmDelete(context, type, id, reportId);
                   },
                 ),
               );

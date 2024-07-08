@@ -269,57 +269,86 @@ Future<void> _reportComment(String commentId, String reason) async {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.place,
-                        color: Colors.red,
-                      ),
-                      const SizedBox(width: 8),
-                      const SizedBox(
-                        width: 70,
-                        child: Text(
-                          'Lokasi',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      Text(' : ${widget.batik.location ?? ''}')
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.calendar_month,
-                        color: Colors.blue,
-                      ),
-                      const SizedBox(width: 8),
-                      const SizedBox(
-                        width: 70,
-                        child: Text(
-                          'Dibangun',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      Text(' : ${widget.batik.built ?? ''}')
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.house,
-                        color: Colors.green,
-                      ),
-                      const SizedBox(width: 8),
-                      const SizedBox(
-                        width: 70,
-                        child: Text(
-                          'Tipe',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      Text(' : ${widget.batik.type ?? ''}')
-                    ],
-                  ),
+Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(
+          Icons.place,
+          color: Colors.red,
+        ),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Lokasi',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4), // Adjust height for better spacing
+          ],
+        ),
+        const SizedBox(width: 36),
+        const Text(':'),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(widget.batik.location ?? ''),
+        ),
+      ],
+    ),
+    const SizedBox(height: 8),
+    Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(
+          Icons.calendar_month,
+          color: Colors.blue,
+        ),
+        const SizedBox(width: 8),
+        const SizedBox(
+          width: 70,
+          child: Text(
+            'Dibangun',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(width: 8),
+        const Text(':'),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(widget.batik.built ?? ''),
+        ),
+      ],
+    ),
+    const SizedBox(height: 8),
+    Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(
+          Icons.house,
+          color: Colors.green,
+        ),
+        const SizedBox(width: 8),
+        const SizedBox(
+          width: 70,
+          child: Text(
+            'Tipe',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(width: 8),
+        const Text(':'),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(widget.batik.type ?? ''),
+        ),
+      ],
+    ),
+  ],
+),
+
                   const SizedBox(height: 8),
                   Divider(color: Colors.blue.shade200),
                   const SizedBox(height: 8),

@@ -1,4 +1,5 @@
 import 'package:batik_nasional/admin_sign_up.dart';
+import 'package:batik_nasional/favorite.dart';
 import 'package:batik_nasional/itemcard.dart';
 import 'package:batik_nasional/notifications_screen.dart';
 import 'package:flutter/material.dart';
@@ -159,6 +160,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 signOut(context);
               },
             ),
+                  ListTile(
+        title: const Text('Favorites'),
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+              builder: (context) => FavoriteScreen())); // Implement FavoritesScreen
+        },
+      ),
             FutureBuilder<bool>(
               future: isAdmin(),
               builder: (context, snapshot) {

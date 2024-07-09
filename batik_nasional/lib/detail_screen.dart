@@ -17,6 +17,7 @@ class _DetailScreenState extends State<DetailScreen> {
   bool isSignedIn = false;
   bool isAdmin = false;
   bool isUploader = false;
+  bool isFavorite = false;
   final TextEditingController _commentController = TextEditingController();
   final TextEditingController _reportReasonController = TextEditingController();
   late String? userProfileImage;
@@ -26,7 +27,81 @@ class _DetailScreenState extends State<DetailScreen> {
   void initState() {
     super.initState();
     _checkSignInStatus();
+    _checkIfFavorite(); // Load status favorit saat inisialisasi
+    _loadLocalFavorites(); // Load favorit lokal dari SharedPreferences
     print("Batik ID in initState: ${widget.batik.id}");
+  }
+
+  Future<void> _loadLocalFavorites() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String>? localFavorites = prefs.getStringList('favoriteBatikIds');
+
+    if (localFavorites != null) {
+      setState(() {
+        isFavorite = localFavorites.contains(widget.batik.id);
+      });
+    }
+  }
+
+  Future<void> _checkIfFavorite() async {
+    var user = auth.FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      var favoritesRef = FirebaseFirestore.instance.collection('favorites').doc(user.uid);
+      var favoriteDoc = await favoritesRef.get();
+
+      if (favoriteDoc.exists) {
+        List<String> batikIds = List<String>.from(favoriteDoc.data()?['batiks'] ?? []);
+        setState(() {
+          isFavorite = batikIds.contains(widget.batik.id);
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    var user = auth.FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      var favoritesRef = FirebaseFirestore.instance.collection('favorites').doc(user.uid);
+
+      if (isFavorite) {
+        // Remove from favorites
+        await favoritesRef.update({
+          'batiks': FieldValue.arrayRemove([widget.batik.id]),
+        });
+      } else {
+        // Add to favorites
+        await favoritesRef.set({
+          'batiks': FieldValue.arrayUnion([widget.batik.id]),
+        }, SetOptions(merge: true));
+      }
+
+      setState(() {
+        isFavorite = !isFavorite;
+      });
+    }
+  }
+
+  void _showRemoveDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Favorite'),
+        content: const Text('Are you sure you want to remove this from your favorites?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('No'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _toggleFavorite();
+              Navigator.of(context).pop();
+            },
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _checkSignInStatus() async {
@@ -162,6 +237,7 @@ Future<void> _reportComment(String commentId, String reason) async {
         title: Text(widget.batik.name ?? ''),
         actions: [
           IconButton(
+            
             icon: const Icon(Icons.flag),
             onPressed: () {
               showDialog(
@@ -192,6 +268,11 @@ Future<void> _reportComment(String commentId, String reason) async {
                 ),
               );
             },
+          ),
+IconButton(
+            icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+            color: isFavorite ? Colors.red : null,
+            onPressed: _toggleFavorite,
           ),
           if (isUploader)
             IconButton(

@@ -24,12 +24,26 @@ class Batik {
     this.userId,
   });
 
-  factory Batik.fromFirestore(DocumentSnapshot doc) {
-    Map data = doc.data() as Map;
-    print("Document data: $data");
+  factory Batik.fromFirestore(DocumentSnapshot doc, String id) {
+    var data = doc.data() as Map<String, dynamic>?; // Handle null data
+    if (data == null) {
+      return Batik(
+        id: id,
+        name: '',
+        imageAsset: '',
+        location: '',
+        built: '',
+        type: '',
+        description: '',
+        imageUrls: [],
+        userId: '',
+      );
+    }
+
     return Batik(
-      id: doc.id,
+      id: id,
       name: data['name'] ?? '',
+      imageAsset: data['imageAsset'] ?? '',
       location: data['location'] ?? '',
       built: data['built'] ?? '',
       type: data['type'] ?? '',
